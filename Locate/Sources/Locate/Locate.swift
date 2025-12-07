@@ -1,4 +1,5 @@
 import SwiftUI
+import LocateCore
 
 @main
 struct LocateApp: App {
@@ -7,15 +8,4 @@ struct LocateApp: App {
             ContentView()
         }
     }
-}
-
-struct ContentView: View {
-    var body: some View {
-        Text("Hello, World!")
-            .frame(minWidth: 400, minHeight: 300)
-    }
-}
-
-#Preview {
-    ContentView()
 }

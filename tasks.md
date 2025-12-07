@@ -1,9 +1,11 @@
 # Locate for Mac - Implementation Tasks
 
-Effort estimates:  
-- **S** ≈ 1 hour  
-- **M** ≈ 2–3 hours  
-- **L** ≈ 3–4 hours  
+Effort estimates:
+- **S** ≈ 1 hour
+- **M** ≈ 2–3 hours
+- **L** ≈ 3–4 hours
+
+> **Note:** Before starting any task, review `AGENTS.md` for Swift/SwiftUI coding guidelines and project structure rules.
 
 ---
 
@@ -23,54 +25,58 @@ Effort estimates:
 
 ---
 
-### GS-T02 — Create shared core module (`LocateCore`)
+### GS-T02 — Create shared core module (`LocateCore`) ✅
 
-- **Description:**  
+- **Description:**
   Add a Swift package or framework target named `LocateCore` to host shared non-UI code (DatabaseManager, FileScanner, SearchEngine, models). Configure the main app target and a future CLI target to depend on this module.
 - **Acceptance criteria:**
-  - [ ] `LocateCore` target created (Swift package or framework).
-  - [ ] `Locate` app target depends on `LocateCore` and builds successfully.
-  - [ ] Placeholder `public struct CoreVersion { ... }` or similar exists and is referenced from the app to verify linkage.
-- **Effort:** S  
+  - [x] `LocateCore` target created (Swift package or framework).
+  - [x] `Locate` app target depends on `LocateCore` and builds successfully.
+  - [x] Placeholder `public struct CoreVersion { ... }` or similar exists and is referenced from the app to verify linkage.
+- **Effort:** S
 - **Dependencies:** GS-T01
+- **Status:** COMPLETE
 
 ---
 
-### GS-T03 — Configure signing, hardened runtime, and deployment settings
+### GS-T03 — Configure signing, hardened runtime, and deployment settings ✅
 
-- **Description:**  
+- **Description:**
   Configure code signing for development builds using a valid Apple Developer certificate. Enable Hardened Runtime on the app target in preparation for notarization. Set the correct bundle identifier and minimum macOS version.
 - **Acceptance criteria:**
-  - [ ] App builds and runs on a local machine without signing warnings.
-  - [ ] Hardened Runtime enabled in target settings.
-  - [ ] Bundle identifier finalized (e.g., `com.yourname.Locate`).
-- **Effort:** S  
+  - [x] App builds and runs on a local machine without signing warnings.
+  - [x] Hardened Runtime enabled in target settings. *(Entitlements file created: `Locate.entitlements`)*
+  - [x] Bundle identifier finalized (`com.locate.app` in `Info.plist`).
+- **Effort:** S
 - **Dependencies:** GS-T01
+- **Status:** COMPLETE
 
 ---
 
-### GS-T04 — Add basic app scaffolding (SwiftUI entry point)
+### GS-T04 — Add basic app scaffolding (SwiftUI entry point) ✅
 
-- **Description:**  
+- **Description:**
   Implement the `@main` SwiftUI app struct and a placeholder `ContentView` with a simple label. Ensure the app window opens correctly and uses SwiftUI lifecycle (no storyboard).
 - **Acceptance criteria:**
-  - [ ] `LocateApp` (or similar) exists and uses `WindowGroup`.
-  - [ ] App launches to a simple window titled "Locate".
-- **Effort:** S  
+  - [x] `LocateApp` (or similar) exists and uses `WindowGroup`.
+  - [x] App launches to a simple window titled "Locate".
+- **Effort:** S
 - **Dependencies:** GS-T01
+- **Status:** COMPLETE
 
 ---
 
-### GS-T05 — Decide and configure SQLite access strategy
+### GS-T05 — Decide and configure SQLite access strategy ✅
 
-- **Description:**  
+- **Description:**
   Decide whether to use system SQLite via C APIs directly or a lightweight wrapper library (prefer direct system SQLite for v1 to avoid extra deps). Add any necessary bridging header or module imports. Verify FTS5 availability.
 - **Acceptance criteria:**
-  - [ ] Chosen approach documented in comments or a short `docs/notes.md`.
-  - [ ] Project builds with SQLite headers available and importable into `LocateCore`.
-  - [ ] Simple "open in-memory DB and run SELECT 1" test runs in a unit test or temporary function.
-- **Effort:** M  
+  - [x] Chosen approach documented in comments or a short `docs/notes.md`.
+  - [x] Project builds with SQLite headers available and importable into `LocateCore`.
+  - [x] Simple "open in-memory DB and run SELECT 1" test runs in a unit test or temporary function.
+- **Effort:** M
 - **Dependencies:** GS-T02
+- **Status:** COMPLETE
 
 ---
 

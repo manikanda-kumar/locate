@@ -8,14 +8,26 @@ let package = Package(
         .macOS(.v12)
     ],
     products: [
+        .library(name: "LocateCore", targets: ["LocateCore"]),
         .executable(name: "Locate", targets: ["Locate"])
     ],
     targets: [
-        .executableTarget(
-            name: "Locate",
+        .target(
+            name: "LocateCore",
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
             ]
+        ),
+        .executableTarget(
+            name: "Locate",
+            dependencies: ["LocateCore"],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
+        ),
+        .testTarget(
+            name: "LocateCoreTests",
+            dependencies: ["LocateCore"]
         ),
     ]
 )
