@@ -84,12 +84,12 @@ Effort estimates:
 
 ### P1-T01 — Implement SQLite schema and migration logic
 
-- **Description:**  
+- **Description:**
   In `LocateCore`, define SQL schema (tables, indexes, FTS5 virtual table, triggers) based on `plan.md`. Implement a migration helper that creates the schema when the DB file is missing or empty and stores schema version in `db_info`. Provide a `func migrateIfNeeded()` that runs inside a transaction.
 - **Acceptance criteria:**
-  - [ ] SQL strings for `db_info`, `roots`, `files`, `files_fts`, indexes, and triggers match the plan.
-  - [ ] Calling `migrateIfNeeded()` on a new DB file creates all tables and indexes without errors.
-  - [ ] Schema version stored in `db_info` and readable.
+  - [x] SQL strings for `db_info`, `roots`, `files`, `files_fts`, indexes, and triggers match the plan.
+  - [x] Calling `migrateIfNeeded()` on a new DB file creates all tables and indexes without errors.
+  - [x] Schema version stored in `db_info` and readable.
 - **Effort:** M  
 - **Dependencies:** GS-T02, GS-T05
 
@@ -97,11 +97,11 @@ Effort estimates:
 
 ### P1-T02 — Implement minimal SQLite wrapper utilities
 
-- **Description:**  
+- **Description:**
   Implement a small Swift wrapper over C SQLite APIs in `LocateCore` (e.g., `DatabaseHandle`, `Statement`) to handle open/close, prepared statements, parameter binding, stepping, and error handling. Focus on read/write operations, not ORM features.
 - **Acceptance criteria:**
-  - [ ] Utility types or functions exist for opening DB, preparing statements, binding params, stepping results.
-  - [ ] Unit test successfully inserts and selects a row in a temporary table.
+  - [x] Utility types or functions exist for opening DB, preparing statements, binding params, stepping results.
+  - [x] Unit test successfully inserts and selects a row in a temporary table.
 - **Effort:** M  
 - **Dependencies:** GS-T05
 
@@ -109,15 +109,15 @@ Effort estimates:
 
 ### P1-T03 — Implement `DatabaseManager` actor skeleton
 
-- **Description:**  
+- **Description:**
   Create `actor DatabaseManager` in `LocateCore` responsible for:
   - Opening the database file at a given path.
   - Ensuring `migrateIfNeeded()` is called once.
   - Providing basic query execution methods that use the SQLite wrapper.
 - **Acceptance criteria:**
-  - [ ] `DatabaseManager` can be initialized with a file URL/path.
-  - [ ] On first initialization, schema is created/migrated.
-  - [ ] Simple test call can insert and select a row via `DatabaseManager`.
+  - [x] `DatabaseManager` can be initialized with a file URL/path.
+  - [x] On first initialization, schema is created/migrated.
+  - [x] Simple test call can insert and select a row via `DatabaseManager`.
 - **Effort:** M  
 - **Dependencies:** P1-T01, P1-T02
 
@@ -125,12 +125,12 @@ Effort estimates:
 
 ### P1-T04 — Define core data models (`Root`, `FileRecord`)
 
-- **Description:**  
+- **Description:**
   Define Swift structs in `LocateCore` to represent rows from `roots` and `files` tables, including fields like `id`, `rootID`, `path`, `name`, `isDirectory`, `size`, timestamps, and `extension`. Implement mapping from SQLite row to these structs.
 - **Acceptance criteria:**
-  - [ ] `Root` and `FileRecord` structs defined with appropriate field types.
-  - [ ] Helper initializers or factories map a `Statement`/row to each struct.
-  - [ ] Unit tests verify mapping for at least one synthetic row per struct.
+  - [x] `Root` and `FileRecord` structs defined with appropriate field types.
+  - [x] Helper initializers or factories map a `Statement`/row to each struct.
+  - [x] Unit tests verify mapping for at least one synthetic row per struct.
 - **Effort:** S  
 - **Dependencies:** P1-T02
 
@@ -138,14 +138,14 @@ Effort estimates:
 
 ### P1-T05 — Add CRUD methods to `DatabaseManager` for roots
 
-- **Description:**  
+- **Description:**
   Implement methods on `DatabaseManager` to:
   - Insert or upsert a root directory into `roots`.
   - Query all roots.
   - Update `file_count`, `dir_count`, and `last_indexed`.
 - **Acceptance criteria:**
-  - [ ] Methods like `addOrUpdateRoot(path:)`, `fetchRoots()`, `updateRootStats(id: ...)` exist.
-  - [ ] Unit test: add a root, update stats, read back and verify.
+  - [x] Methods like `addOrUpdateRoot(path:)`, `fetchRoots()`, `updateRootStats(id: ...)` exist.
+  - [x] Unit test: add a root, update stats, read back and verify.
 - **Effort:** M  
 - **Dependencies:** P1-T03, P1-T04
 
