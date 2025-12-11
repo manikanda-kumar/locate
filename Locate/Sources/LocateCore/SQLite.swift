@@ -6,7 +6,7 @@ public struct SQLiteError: Error, Equatable {
     public let code: Int32
 }
 
-public final class DatabaseHandle {
+public final class DatabaseHandle: @unchecked Sendable {
     private var db: OpaquePointer?
 
     public init(path: String) throws {
@@ -31,6 +31,18 @@ public final class DatabaseHandle {
         try statement.stepUntilDone()
     }
 
+    public func withTransaction<T>(_ block: () throws -> T) throws -> T {
+        try execute("BEGIN IMMEDIATE TRANSACTION")
+        do {
+            let result = try block()
+            try execute("COMMIT")
+            return result
+        } catch {
+            try? execute("ROLLBACK")
+            throw error
+        }
+    }
+
     private static func currentError(_ db: OpaquePointer?) -> SQLiteError {
         let code = sqlite3_errcode(db)
         let message = sqlite3_errmsg(db).map { String(cString: $0) } ?? "Unknown error"
@@ -40,7 +52,7 @@ public final class DatabaseHandle {
 
 public final class Statement {
     private var stmt: OpaquePointer?
-    private weak var db: OpaquePointer?
+    private var db: OpaquePointer?
 
     public init(db: OpaquePointer?, sql: String) throws {
         self.db = db
@@ -125,7 +137,7 @@ public final class Statement {
     }
 
     private func bindText(_ value: String, at index: Int32, transient: Bool) throws {
-        let destructor: sqlite3_destructor_type = transient ? unsafeBitCast(-1, to: sqlite3_destructor_type.self) : nil
+        let destructor: sqlite3_destructor_type? = transient ? unsafeBitCast(-1, to: sqlite3_destructor_type.self) : nil
         if sqlite3_bind_text(stmt, index, value, -1, destructor) != SQLITE_OK {
             throw Self.currentError(db)
         }

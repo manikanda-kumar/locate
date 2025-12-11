@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Root: Equatable {
+public struct Root: Equatable, Sendable {
     public let id: Int64
     public let path: String
     public let volumeName: String?
@@ -9,7 +9,7 @@ public struct Root: Equatable {
     public let lastIndexed: Int64?
 }
 
-public struct FileRecord: Equatable {
+public struct FileRecord: Equatable, Sendable {
     public let id: Int64
     public let rootID: Int64
     public let parentID: Int64?

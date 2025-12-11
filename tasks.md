@@ -90,8 +90,9 @@ Effort estimates:
   - [x] SQL strings for `db_info`, `roots`, `files`, `files_fts`, indexes, and triggers match the plan.
   - [x] Calling `migrateIfNeeded()` on a new DB file creates all tables and indexes without errors.
   - [x] Schema version stored in `db_info` and readable.
-- **Effort:** M  
+- **Effort:** M
 - **Dependencies:** GS-T02, GS-T05
+- **Status:** COMPLETE
 
 ---
 
@@ -102,8 +103,9 @@ Effort estimates:
 - **Acceptance criteria:**
   - [x] Utility types or functions exist for opening DB, preparing statements, binding params, stepping results.
   - [x] Unit test successfully inserts and selects a row in a temporary table.
-- **Effort:** M  
+- **Effort:** M
 - **Dependencies:** GS-T05
+- **Status:** COMPLETE
 
 ---
 
@@ -118,8 +120,9 @@ Effort estimates:
   - [x] `DatabaseManager` can be initialized with a file URL/path.
   - [x] On first initialization, schema is created/migrated.
   - [x] Simple test call can insert and select a row via `DatabaseManager`.
-- **Effort:** M  
+- **Effort:** M
 - **Dependencies:** P1-T01, P1-T02
+- **Status:** COMPLETE
 
 ---
 
@@ -131,8 +134,9 @@ Effort estimates:
   - [x] `Root` and `FileRecord` structs defined with appropriate field types.
   - [x] Helper initializers or factories map a `Statement`/row to each struct.
   - [x] Unit tests verify mapping for at least one synthetic row per struct.
-- **Effort:** S  
+- **Effort:** S
 - **Dependencies:** P1-T02
+- **Status:** COMPLETE
 
 ---
 
@@ -146,27 +150,29 @@ Effort estimates:
 - **Acceptance criteria:**
   - [x] Methods like `addOrUpdateRoot(path:)`, `fetchRoots()`, `updateRootStats(id: ...)` exist.
   - [x] Unit test: add a root, update stats, read back and verify.
-- **Effort:** M  
+- **Effort:** M
 - **Dependencies:** P1-T03, P1-T04
+- **Status:** COMPLETE
 
 ---
 
-### P1-T06 — Implement `FileScanner` for recursive directory traversal
+### P1-T06 — Implement `FileScanner` for recursive directory traversal ✅
 
-- **Description:**  
+- **Description:**
   Implement a `FileScanner` type in `LocateCore` that, given a root path and a set of exclusion rules (initially a hard-coded list like `Library`, `.git`, `node_modules`), recursively enumerates files and directories using `FileManager`. It should yield `FileRecord`-like data suitable for insertion.
 - **Acceptance criteria:**
-  - [ ] `FileScanner.scan(rootPath:)` returns a sequence/array of file/directory entries with name, path, size, timestamps, extension, and `isDirectory`.
-  - [ ] Basic exclusions applied (e.g., skip `~/Library`, hidden system dirs).
-  - [ ] Test run on a sample directory logs or returns correct entries without crashing.
-- **Effort:** L  
+  - [x] `FileScanner.scan(rootPath:)` returns a sequence/array of file/directory entries with name, path, size, timestamps, extension, and `isDirectory`.
+  - [x] Basic exclusions applied (e.g., skip `~/Library`, hidden system dirs).
+  - [x] Test run on a sample directory logs or returns correct entries without crashing.
+- **Effort:** L
 - **Dependencies:** GS-T02
+- **Status:** COMPLETE
 
 ---
 
-### P1-T07 — Implement batched insert pipeline for indexing
+### P1-T07 — Implement batched insert pipeline for indexing ✅
 
-- **Description:**  
+- **Description:**
   Implement a function on `DatabaseManager` (or a separate `IndexingService`) that:
   - Takes a root path.
   - Uses `FileScanner` to enumerate entries.
@@ -175,72 +181,77 @@ Effort estimates:
   - Inserts new `files` rows in batches (e.g., 500–1000 per transaction).
   - Updates `file_count` and `dir_count`.
 - **Acceptance criteria:**
-  - [ ] Single public API like `func rebuildIndex(for rootPath: String, progress: (IndexProgress) -> Void)` exists.
-  - [ ] Running this on a test directory creates corresponding `roots` and `files` rows.
-  - [ ] Indexing runs in batches with transactions (verified by code / logs).
-- **Effort:** L  
+  - [x] Single public API like `func rebuildIndex(for rootPath: String, progress: (IndexProgress) -> Void)` exists.
+  - [x] Running this on a test directory creates corresponding `roots` and `files` rows.
+  - [x] Indexing runs in batches with transactions (verified by code / logs).
+- **Effort:** L
 - **Dependencies:** P1-T03, P1-T05, P1-T06
+- **Status:** COMPLETE
 
 ---
 
-### P1-T08 — Implement FTS5-backed name search query
+### P1-T08 — Implement FTS5-backed name search query ✅
 
-- **Description:**  
+- **Description:**
   Add a search method to `DatabaseManager` that:
   - Accepts a search string and optional limit.
   - Uses `files_fts` virtual table to search by file name quickly.
   - Joins back to `files` table to obtain full metadata.
   - Supports basic wildcard behavior by converting user input into an FTS5 query.
 - **Acceptance criteria:**
-  - [ ] `searchByName(_ query: String, limit: Int) async throws -> [FileRecord]` implemented.
-  - [ ] Query uses FTS5 (verified by SQL string).
-  - [ ] Unit test: inserting a few known files and querying by partial name returns expected results.
-- **Effort:** M  
+  - [x] `searchByName(_ query: String, limit: Int) async throws -> [FileRecord]` implemented.
+  - [x] Query uses FTS5 (verified by SQL string).
+  - [x] Unit test: inserting a few known files and querying by partial name returns expected results.
+- **Effort:** M
 - **Dependencies:** P1-T01, P1-T03, P1-T04
+- **Status:** COMPLETE
 
 ---
 
-### P1-T09 — Implement basic filter-capable search API (extension, size, date)
+### P1-T09 — Implement basic filter-capable search API (extension, size, date) ✅
 
 - **Description:**  
   Extend the search method with a `SearchRequest` struct (name, optional extension(s), size range, modified date range) and update the SQL query to apply filters using indexes.
 - **Acceptance criteria:**
-  - [ ] `SearchRequest` struct defined; search API accepts it.
-  - [ ] SQL query includes `WHERE` clauses for provided filters.
-  - [ ] Unit tests cover filter by extension, size, and date.
+  - [x] `SearchRequest` struct defined; search API accepts it.
+  - [x] SQL query includes `WHERE` clauses for provided filters.
+  - [x] Unit tests cover filter by extension, size, and date.
 - **Effort:** M  
 - **Dependencies:** P1-T08
+- **Status:** COMPLETE
 
 ---
 
-### P1-T10 — Implement CLI tool target (`locate`)
+### P1-T10 — Implement CLI tool target (`locate`) ✅
 
 - **Description:**  
   Add a macOS CLI target (e.g., `LocateCLI`) that links against `LocateCore`. Implement subcommands:
   - `build-index <rootPath>` to trigger `rebuildIndex`.
   - `search <query>` with optional flags for extension, limit, etc.
 - **Acceptance criteria:**
-  - [ ] `locate` executable builds and runs from Xcode or command line.
-  - [ ] `locate build-index ~/SomeDir` creates a DB and index without crashing.
-  - [ ] `locate search foo` prints matching file paths.
+  - [x] `locate` executable builds and runs from Xcode or command line.
+  - [x] `locate build-index ~/SomeDir` creates a DB and index without crashing.
+  - [x] `locate search foo` prints matching file paths.
 - **Effort:** M  
 - **Dependencies:** GS-T02, P1-T07, P1-T09
+- **Status:** COMPLETE
 
 ---
 
-### P1-T11 — Add basic logging and error reporting in core
+### P1-T11 — Add basic logging and error reporting in core ✅
 
 - **Description:**  
   Implement a lightweight logging utility in `LocateCore` (e.g., wrapper around `os_log`). Ensure `DatabaseManager`, `FileScanner`, and indexing pipeline use consistent error logging.
 - **Acceptance criteria:**
-  - [ ] Logging helper available and used in core components.
-  - [ ] On index or search failure, an error with useful message is produced and logged.
+  - [x] Logging helper available and used in core components.
+  - [x] On index or search failure, an error with useful message is produced and logged.
 - **Effort:** S  
 - **Dependencies:** P1-T03, P1-T06, P1-T07
+- **Status:** COMPLETE
 
 ---
 
-### P1-T12 — Core engine smoke tests and performance sanity check
+### P1-T12 — Core engine smoke tests and performance sanity check ✅
 
 - **Description:**  
   Create a test harness that:
@@ -248,10 +259,11 @@ Effort estimates:
   - Runs multiple searches.
   - Logs basic timings.
 - **Acceptance criteria:**
-  - [ ] Automated or semi-automated test that can be re-run easily.
-  - [ ] For a sample directory (~10k files): Index completes, search completes under 100ms.
+  - [x] Automated or semi-automated test that can be re-run easily.
+  - [x] For a sample directory (~10k files): Index completes, search completes under 100ms.
 - **Effort:** M  
 - **Dependencies:** P1-T07, P1-T09
+- **Status:** COMPLETE
 
 ---
 
