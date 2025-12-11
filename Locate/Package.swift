@@ -5,10 +5,10 @@ import PackageDescription
 let package = Package(
     name: "Locate",
     platforms: [
-        .macOS(.v12)
+        .macOS(.v15)
     ],
     products: [
-.library(name: "LocateCore", targets: ["LocateCore"]),
+        .library(name: "LocateCore", targets: ["LocateCore"]),
         .executable(name: "Locate", targets: ["Locate"]),
         .executable(name: "LocateCLI", targets: ["LocateCLI"])
     ],

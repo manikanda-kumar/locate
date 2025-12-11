@@ -1,15 +1,11 @@
 import SwiftUI
-import LocateCore
 
 struct ContentView: View {
+    @State private var viewModel = SearchViewModel()
+
     var body: some View {
-        VStack {
-            Text("Hello, World!")
-            Text(CoreVersion.description())
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(minWidth: 400, minHeight: 300)
+        SearchView(model: viewModel)
+            .frame(minWidth: 640, minHeight: 480)
     }
 }
 

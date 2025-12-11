@@ -1,0 +1,256 @@
+import Foundation
+import LocateCore
+import Observation
+
+@MainActor
+@Observable
+final class SearchViewModel {
+    enum FileTypeFilter: String, CaseIterable, Identifiable, Sendable {
+        case all
+        case documents
+        case images
+        case code
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All"
+            case .documents: return "Documents"
+            case .images: return "Images"
+            case .code: return "Code"
+            }
+        }
+
+        var extensions: [String]? {
+            switch self {
+            case .all:
+                return nil
+            case .documents:
+                return ["pdf", "doc", "docx", "txt", "rtf", "pages"]
+            case .images:
+                return ["png", "jpg", "jpeg", "gif", "tiff", "heic", "webp"]
+            case .code:
+                return ["swift", "m", "mm", "h", "hpp", "cpp", "c", "rs", "py", "js", "ts", "tsx", "json", "yaml", "yml", "md"]
+            }
+        }
+    }
+
+    enum SizePreset: String, CaseIterable, Identifiable, Sendable {
+        case any
+        case over1MB
+        case over10MB
+        case over100MB
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .any: return "Any Size"
+            case .over1MB: return "> 1 MB"
+            case .over10MB: return "> 10 MB"
+            case .over100MB: return "> 100 MB"
+            }
+        }
+
+        var minimumBytes: Int64? {
+            switch self {
+            case .any: return nil
+            case .over1MB: return 1_000_000
+            case .over10MB: return 10_000_000
+            case .over100MB: return 100_000_000
+            }
+        }
+    }
+
+    enum DatePreset: String, CaseIterable, Identifiable, Sendable {
+        case any
+        case last24Hours
+        case last7Days
+        case last30Days
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .any: return "Any Date"
+            case .last24Hours: return "Last 24h"
+            case .last7Days: return "Last 7 days"
+            case .last30Days: return "Last 30 days"
+            }
+        }
+
+        var modifiedAfter: Int64? {
+            let now = Date()
+            switch self {
+            case .any:
+                return nil
+            case .last24Hours:
+                return Int64(now.addingTimeInterval(-86_400).timeIntervalSince1970)
+            case .last7Days:
+                return Int64(now.addingTimeInterval(-604_800).timeIntervalSince1970)
+            case .last30Days:
+                return Int64(now.addingTimeInterval(-2_592_000).timeIntervalSince1970)
+            }
+        }
+    }
+
+    enum IndexStatus: Equatable {
+        case unknown
+        case notIndexed
+        case indexed(lastIndexed: Date?, fileCount: Int64, dirCount: Int64)
+    }
+
+    struct SearchResult: Identifiable, Hashable {
+        let record: FileRecord
+
+        var id: Int64 { record.id }
+        var url: URL { URL(filePath: record.path) }
+        var isDirectory: Bool { record.isDirectory }
+        var name: String { record.name }
+        var size: Int64? { record.size }
+
+        var modifiedDate: Date? {
+            guard let modifiedAt = record.modifiedAt else { return nil }
+            return Date(timeIntervalSince1970: TimeInterval(modifiedAt))
+        }
+
+        var parentPath: String {
+            url.deletingLastPathComponent().path(percentEncoded: false)
+        }
+    }
+
+    var query: String = ""
+    var fileType: FileTypeFilter = .all
+    var sizePreset: SizePreset = .any
+    var datePreset: DatePreset = .any
+    var results: [SearchResult] = []
+    var selection: Set<SearchResult.ID> = []
+    var isSearching = false
+    var lastError: String?
+    private(set) var indexStatus: IndexStatus = .unknown
+
+    private let databaseURL: URL
+    private var databaseManager: DatabaseManager?
+    private var hasLoaded = false
+    private var searchTask: Task<Void, Never>?
+
+    init(databaseURL: URL = AppPaths.defaultDatabaseURL()) {
+        self.databaseURL = databaseURL
+    }
+
+    func load() async {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        await refreshIndexStatus()
+    }
+
+    func refreshIndexStatus() async {
+        do {
+            let manager = try ensureManager()
+            let roots = try await manager.fetchRoots()
+            guard !roots.isEmpty else {
+                indexStatus = .notIndexed
+                return
+            }
+            let totalFiles = roots.reduce(into: Int64(0)) { $0 += $1.fileCount }
+            let totalDirs = roots.reduce(into: Int64(0)) { $0 += $1.dirCount }
+            let latest = roots.compactMap(\.lastIndexed).max().map { Date(timeIntervalSince1970: TimeInterval($0)) }
+            indexStatus = .indexed(lastIndexed: latest, fileCount: totalFiles, dirCount: totalDirs)
+        } catch {
+            indexStatus = .notIndexed
+            lastError = error.localizedDescription
+        }
+    }
+
+    func clearQuery() {
+        query = ""
+        results = []
+        lastError = nil
+        selection.removeAll()
+    }
+
+    func scheduleSearch(immediate: Bool = false) {
+        searchTask?.cancel()
+        let nextQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchTask = Task { [weak self] in
+            guard let self else { return }
+            if !immediate {
+                try? await Task.sleep(for: .milliseconds(220))
+            }
+            guard !Task.isCancelled else { return }
+            await self.runSearch(with: nextQuery)
+        }
+    }
+
+    var statusDescription: String {
+        switch indexStatus {
+        case .unknown:
+            return "Loading index status…"
+        case .notIndexed:
+            return "No index yet. Build an index to start searching."
+        case .indexed(let lastIndexed, let fileCount, let dirCount):
+            var parts: [String] = []
+            parts.append("\(fileCount) files")
+            parts.append("\(dirCount) folders")
+            if let lastIndexed {
+                let relative = Formatting.relativeDateFormatter.localizedString(for: lastIndexed, relativeTo: Date())
+                parts.append("updated \(relative)")
+            }
+            return parts.joined(separator: " · ")
+        }
+    }
+
+    var hasIndex: Bool {
+        if case .indexed = indexStatus {
+            return true
+        }
+        return false
+    }
+
+    private func ensureManager() throws -> DatabaseManager {
+        if let databaseManager {
+            return databaseManager
+        }
+        try FileManager.default.createDirectory(
+            at: databaseURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        let manager = try DatabaseManager(path: databaseURL.path)
+        databaseManager = manager
+        return manager
+    }
+
+    private func runSearch(with text: String) async {
+        guard !text.isEmpty else {
+            results = []
+            lastError = nil
+            selection.removeAll()
+            return
+        }
+        isSearching = true
+        do {
+            let manager = try ensureManager()
+            let request = buildRequest(for: text)
+            let records = try await manager.search(request, limit: 200)
+            results = records.map(SearchResult.init)
+            lastError = nil
+        } catch {
+            results = []
+            lastError = error.localizedDescription
+        }
+        isSearching = false
+    }
+
+    private func buildRequest(for text: String) -> SearchRequest {
+        SearchRequest(
+            query: text,
+            extensions: fileType.extensions,
+            minSize: sizePreset.minimumBytes,
+            maxSize: nil,
+            modifiedAfter: datePreset.modifiedAfter,
+            modifiedBefore: nil
+        )
+    }
+}

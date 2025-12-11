@@ -274,9 +274,10 @@ Effort estimates:
 - **Description:**  
   Create `SearchView` and `ResultsView` SwiftUI components. Layout: search bar on top, filter row, results table, status bar at bottom.
 - **Acceptance criteria:**
-  - [ ] App launches to a window with search field, filter controls row, results area, status bar.
+  - [x] App launches to a window with search field, filter controls row, results area, status bar.
 - **Effort:** M  
 - **Dependencies:** GS-T04
+- **Status:** COMPLETE
 
 ---
 
@@ -285,11 +286,12 @@ Effort estimates:
 - **Description:**  
   Add an `ObservableObject` (e.g., `SearchViewModel`) that holds search text, filter state, and results. Integrate with `DatabaseManager` via async calls with debouncing.
 - **Acceptance criteria:**
-  - [ ] `SearchViewModel` exposes `@Published` properties for text and filters.
-  - [ ] Search triggers on text changes with debounce (150–300ms).
-  - [ ] Calls to `DatabaseManager` update `results` on main thread.
+  - [x] `SearchViewModel` exposes `@Published` properties for text and filters.
+  - [x] Search triggers on text changes with debounce (150–300ms).
+  - [x] Calls to `DatabaseManager` update `results` on main thread.
 - **Effort:** M  
 - **Dependencies:** P1-T09, P1-T03
+- **Status:** COMPLETE
 
 ---
 
@@ -298,10 +300,11 @@ Effort estimates:
 - **Description:**  
   Wire the search text field to `SearchViewModel`. Typing triggers search, clearing clears results.
 - **Acceptance criteria:**
-  - [ ] Typing in search field causes search calls.
-  - [ ] Clearing the search field clears results.
+  - [x] Typing in search field causes search calls.
+  - [x] Clearing the search field clears results.
 - **Effort:** S  
 - **Dependencies:** P2-T02
+- **Status:** COMPLETE
 
 ---
 
@@ -310,10 +313,11 @@ Effort estimates:
 - **Description:**  
   Implement `ResultsView` as a `Table` or `List` with columns: Name (with icon), Path, Size, Modified date. Use `NSWorkspace` for file icons.
 - **Acceptance criteria:**
-  - [ ] Results appear in a scrolling list/table with icon, name, path, size, date.
+  - [x] Results appear in a scrolling list/table with icon, name, path, size, date.
   - [ ] No obvious performance issues with a few thousand rows.
 - **Effort:** L  
 - **Dependencies:** P2-T02
+- **Status:** IN PROGRESS
 
 ---
 
@@ -351,10 +355,11 @@ Effort estimates:
   - Size: presets (Any, >1MB, >10MB, >100MB).
   - Date: presets (Any, Last 24h, Last 7 days, Last 30 days).
 - **Acceptance criteria:**
-  - [ ] Changing any filter updates results via `SearchViewModel`.
-  - [ ] At least one preset for each category works correctly.
+  - [x] Changing any filter updates results via `SearchViewModel`.
+  - [x] At least one preset for each category works correctly.
 - **Effort:** L  
 - **Dependencies:** P1-T09, P2-T02, P2-T04
+- **Status:** COMPLETE
 
 ---
 

@@ -1,7 +1,7 @@
-# DatabaseTests Fixes Summary
+# Build and Test Fixes Summary
 
 ## Overview
-This document summarizes the fixes applied to resolve compilation errors and test failures in `DatabaseTests.swift` and related Core components.
+This document summarizes the fixes applied to resolve compilation errors and test failures
 
 ## Issues Resolved
 
@@ -32,3 +32,29 @@ The primary compilation errors were due to passing non-Sendable types across act
 *   **Issue**: The assertion `#expect(results.count == 1)` failed (returned 0).
 *   **Cause**: The test query was `"a"`. The `DatabaseManager` uses FTS5 prefix matching (`text*`). "beta.txt" does not start with "a", so `beta*` or `a*` would not match in the way expected if the intention was "contains". The default behavior is prefix-search for tokens.
 *   **Fix**: Updated the test query from `"a"` to `"beta"`. This correctly matches "beta.txt" via the prefix search logic, satisfying the filter conditions and passing the test.
+
+## Build & UI Fixes (Strict Concurrency & Standard Library)
+
+### 1. Hashable Conformance
+*   **`Locate/Sources/LocateCore/Models.swift`**:
+    *   Marked `public struct FileRecord` as `Hashable`.
+    *   **Reason**: `SearchViewModel.SearchResult` requires `Hashable` conformance, and it contains a `FileRecord` property.
+
+### 2. UI Strict Concurrency Violations
+*   **`Locate/Sources/Locate/Formatting.swift`**:
+    *   Marked `static let byteCountFormatter` as `@MainActor`.
+    *   Marked `static let relativeDateFormatter` as `@MainActor`.
+    *   **Reason**: `ByteCountFormatter` and `RelativeDateTimeFormatter` are reference types (classes) and are not `Sendable`, making global static instances unsafe without actor isolation.
+
+*   **`Locate/Sources/Locate/ResultsView.swift`**:
+    *   Marked `private enum FileIconProvider` as `@MainActor`.
+    *   **Reason**: Uses `NSCache` (a class, not Sendable) in a static property. Also interacts with `NSWorkspace` and `NSImage` which are main-thread bound or tricky with concurrency.
+
+*   **`Locate/Sources/Locate/SearchViewModel.swift`**:
+    *   Removed `deinit` method containing `searchTask?.cancel()`.
+    *   **Reason**: `searchTask` is isolated to `@MainActor`. Accessing it from deallocator (`deinit`) is not isolated to the Main Actor, leading to a concurrency violation. The task captures `[weak self]`, so explicit cancellation in deinit is redundant.
+
+### 3. Compilation Fixes
+*   **`Locate/Sources/Locate/SearchView.swift`**:
+    *   Removed `.textInputAutocapitalization(.never)`.
+    *   **Reason**: This modifier is not available/supported on `macOS` in the current SDK context used by the build.
