@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import LocateCore
 import Observation
 
@@ -127,6 +128,8 @@ public final class SearchViewModel {
     public var results: [SearchResult] = []
     public var selection: Set<SearchResult.ID> = []
     public var isSearching = false
+    public var isIndexing = false
+    public var indexingProgress: String?
     public var lastError: String?
     public private(set) var indexStatus: IndexStatus = .unknown
 
@@ -206,6 +209,51 @@ public final class SearchViewModel {
             return true
         }
         return false
+    }
+
+    public func openFile(_ result: SearchResult) {
+        let url = result.url
+        let opened = NSWorkspace.shared.open(url)
+        if !opened {
+            lastError = "Failed to open '\(result.name)'"
+        }
+    }
+
+    public func revealInFinder(_ result: SearchResult) {
+        NSWorkspace.shared.selectFile(result.url.path(percentEncoded: false), inFileViewerRootedAtPath: "")
+    }
+
+    public func copyPath(_ result: SearchResult) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(result.url.path(percentEncoded: false), forType: .string)
+    }
+
+    public func rebuildIndex(rootPath: String? = nil) async {
+        let targetPath = rootPath ?? FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false)
+        isIndexing = true
+        indexingProgress = "Starting indexing…"
+        lastError = nil
+        do {
+            let manager = try ensureManager()
+            try await manager.rebuildIndex(for: targetPath, batchSize: 500) { [weak self] progress in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    switch progress {
+                    case .batchInserted(_, let files, let dirs):
+                        self.indexingProgress = "Indexed \(files) files, \(dirs) folders…"
+                    case .completed(let files, let dirs):
+                        self.indexingProgress = "Completed: \(files) files, \(dirs) folders"
+                    }
+                }
+            }
+            await refreshIndexStatus()
+            indexingProgress = nil
+        } catch {
+            lastError = "Indexing failed: \(error.localizedDescription)"
+            indexingProgress = nil
+        }
+        isIndexing = false
     }
 
     private func ensureManager() throws -> DatabaseManager {

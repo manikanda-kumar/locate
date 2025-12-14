@@ -23,5 +23,24 @@ struct LocateApp: App {
         WindowGroup("Locate") {
             ContentView()
         }
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("Update Index") {
+                    NotificationCenter.default.post(name: .updateIndexRequested, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
+            CommandGroup(replacing: .textEditing) {
+                Button("Find") {
+                    NotificationCenter.default.post(name: .focusSearchRequested, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
+        }
     }
+}
+
+extension Notification.Name {
+    static let updateIndexRequested = Notification.Name("updateIndexRequested")
+    static let focusSearchRequested = Notification.Name("focusSearchRequested")
 }

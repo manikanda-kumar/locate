@@ -11,7 +11,7 @@ struct SearchView: View {
             searchBar
             filterRow
             Divider()
-            ResultsView(results: model.results, selection: $model.selection)
+            ResultsView(results: model.results, selection: $model.selection, model: model)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             statusBar
@@ -22,6 +22,18 @@ struct SearchView: View {
         }
         .onAppear {
             isSearchFocused = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .focusSearchRequested)) { _ in
+            isSearchFocused = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .updateIndexRequested)) { _ in
+            Task {
+                await model.rebuildIndex()
+            }
+        }
+        .onKeyPress(.escape) {
+            NSApp.keyWindow?.close()
+            return .handled
         }
     }
 
@@ -66,6 +78,16 @@ struct SearchView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(model.query.isEmpty)
+
+            Button(model.isIndexing ? "Indexing…" : "Update Index") {
+                Task {
+                    await model.rebuildIndex()
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(model.isIndexing)
+            .keyboardShortcut("r", modifiers: .command)
         }
     }
 
@@ -102,9 +124,19 @@ struct SearchView: View {
 
     private var statusBar: some View {
         HStack {
-            Text(model.statusDescription)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            if let progress = model.indexingProgress {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(progress)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text(model.statusDescription)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             if let lastError = model.lastError {
                 Text(lastError)

@@ -310,40 +310,42 @@ Effort estimates:
 
 ### P2-T04 — Implement results table with file icons and metadata
 
-- **Description:**  
+- **Description:**
   Implement `ResultsView` as a `Table` or `List` with columns: Name (with icon), Path, Size, Modified date. Use `NSWorkspace` for file icons.
 - **Acceptance criteria:**
   - [x] Results appear in a scrolling list/table with icon, name, path, size, date.
-  - [ ] No obvious performance issues with a few thousand rows.
-- **Effort:** L  
+  - [x] No obvious performance issues with a few thousand rows.
+- **Effort:** L
 - **Dependencies:** P2-T02
-- **Status:** IN PROGRESS
+- **Status:** COMPLETE
 
 ---
 
 ### P2-T05 — Implement "Open file" (double-click / Return)
 
-- **Description:**  
+- **Description:**
   Double-clicking or pressing Return/⌘O opens the selected file using `NSWorkspace.open`.
 - **Acceptance criteria:**
-  - [ ] Double-click on result opens the file or directory.
-  - [ ] Return key with selection opens the file.
-  - [ ] Errors handled gracefully with alert/toast.
-- **Effort:** M  
+  - [x] Double-click on result opens the file or directory.
+  - [x] Return key with selection opens the file.
+  - [x] Errors handled gracefully with alert/toast.
+- **Effort:** M
 - **Dependencies:** P2-T04
+- **Status:** COMPLETE
 
 ---
 
 ### P2-T06 — Implement "Reveal in Finder" and "Copy Path" actions
 
-- **Description:**  
+- **Description:**
   Add context menu with "Reveal in Finder" and "Copy Path" using `NSWorkspace.selectFile` and `NSPasteboard`.
 - **Acceptance criteria:**
-  - [ ] Right-click shows context menu with both actions.
-  - [ ] "Reveal in Finder" opens Finder with item selected.
-  - [ ] "Copy Path" places absolute path on clipboard.
-- **Effort:** M  
+  - [x] Right-click shows context menu with both actions.
+  - [x] "Reveal in Finder" opens Finder with item selected.
+  - [x] "Copy Path" places absolute path on clipboard.
+- **Effort:** M
 - **Dependencies:** P2-T04
+- **Status:** COMPLETE
 
 ---
 
@@ -365,51 +367,55 @@ Effort estimates:
 
 ### P2-T08 — Display index status (last indexed, total files)
 
-- **Description:**  
+- **Description:**
   Display in status bar: "Index updated X minutes ago" and file count from `db_info`/`roots`.
 - **Acceptance criteria:**
-  - [ ] Status bar shows "Last indexed …" and file count after indexing.
-  - [ ] If no index exists, shows "No index yet" or similar.
-- **Effort:** S  
+  - [x] Status bar shows "Last indexed …" and file count after indexing.
+  - [x] If no index exists, shows "No index yet" or similar.
+- **Effort:** S
 - **Dependencies:** P1-T07, P2-T02, P2-T01
+- **Status:** COMPLETE
 
 ---
 
 ### P2-T09 — Implement "Update Index" command in UI
 
-- **Description:**  
+- **Description:**
   Add menu item and/or button to trigger indexing for configured root(s).
 - **Acceptance criteria:**
-  - [ ] "Update Index" command exists in menu bar and/or UI button.
-  - [ ] Triggering runs `rebuildIndex` asynchronously and disables button while running.
-  - [ ] Status bar updates after completion.
-- **Effort:** M  
+  - [x] "Update Index" command exists in menu bar and/or UI button.
+  - [x] Triggering runs `rebuildIndex` asynchronously and disables button while running.
+  - [x] Status bar updates after completion.
+- **Effort:** M
 - **Dependencies:** P1-T07, P2-T02
+- **Status:** COMPLETE
 
 ---
 
 ### P2-T10 — Implement basic keyboard shortcuts (local to app)
 
-- **Description:**  
+- **Description:**
   Implement shortcuts: ⌘F (focus search), ⌘R (update index), ⌘W/Esc (close window).
 - **Acceptance criteria:**
-  - [ ] All shortcuts work when app is focused.
-  - [ ] Menu items show correct key equivalents.
-- **Effort:** M  
+  - [x] All shortcuts work when app is focused.
+  - [x] Menu items show correct key equivalents.
+- **Effort:** M
 - **Dependencies:** P2-T01, P2-T09
+- **Status:** COMPLETE
 
 ---
 
 ### P2-T11 — Handle "no index" and error states in UI
 
-- **Description:**  
+- **Description:**
   Implement states for: first launch (no database), indexing in progress, errors.
 - **Acceptance criteria:**
-  - [ ] Clean install shows "No database yet" messaging.
-  - [ ] During indexing, spinner or banner is shown.
-  - [ ] Simulated error shows error message instead of crashing.
-- **Effort:** M  
+  - [x] Clean install shows "No database yet" messaging.
+  - [x] During indexing, spinner or banner is shown.
+  - [x] Simulated error shows error message instead of crashing.
+- **Effort:** M
 - **Dependencies:** P1-T07, P2-T02, P2-T01
+- **Status:** COMPLETE
 
 ---
 

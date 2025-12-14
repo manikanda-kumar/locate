@@ -5,6 +5,7 @@ import LocateViewModel
 struct ResultsView: View {
     let results: [SearchViewModel.SearchResult]
     @Binding var selection: Set<SearchViewModel.SearchResult.ID>
+    let model: SearchViewModel
 
     var body: some View {
         Group {
@@ -41,8 +42,56 @@ struct ResultsView: View {
                     }
                 }
                 .tableStyle(.inset(alternatesRowBackgrounds: true))
+                .onTapGesture(count: 2) {
+                    handleOpenFile()
+                }
+                .contextMenu {
+                    if !selection.isEmpty {
+                        Button("Open") {
+                            handleOpenFile()
+                        }
+                        .keyboardShortcut(.return)
+
+                        Button("Reveal in Finder") {
+                            handleRevealInFinder()
+                        }
+
+                        Button("Copy Path") {
+                            handleCopyPath()
+                        }
+                        .keyboardShortcut("c", modifiers: [.command, .shift])
+                    }
+                }
             }
         }
+        .onKeyPress(.return) {
+            handleOpenFile()
+            return .handled
+        }
+    }
+
+    private func handleOpenFile() {
+        guard let firstID = selection.first,
+              let result = results.first(where: { $0.id == firstID }) else {
+            return
+        }
+        model.openFile(result)
+    }
+
+    private func handleRevealInFinder() {
+        guard let firstID = selection.first,
+              let result = results.first(where: { $0.id == firstID }) else {
+            return
+        }
+        model.revealInFinder(result)
+    }
+
+    private func handleCopyPath() {
+        guard let firstID = selection.first,
+              let result = results.first(where: { $0.id == firstID }) else {
+            return
+        }
+        model.copyPath(result)
     }
 
     private var emptyState: some View {
