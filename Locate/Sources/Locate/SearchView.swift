@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import LocateViewModel
 
 struct SearchView: View {
     @Bindable var model: SearchViewModel
@@ -19,51 +20,53 @@ struct SearchView: View {
         .task {
             await model.load()
         }
-        .onChange(of: model.query, initial: false) { _, _ in
-            model.scheduleSearch()
-        }
-        .onChange(of: model.fileType, initial: false) { _, _ in
-            model.scheduleSearch(immediate: true)
-        }
-        .onChange(of: model.sizePreset, initial: false) { _, _ in
-            model.scheduleSearch(immediate: true)
-        }
-        .onChange(of: model.datePreset, initial: false) { _, _ in
-            model.scheduleSearch(immediate: true)
+        .onAppear {
+            isSearchFocused = true
         }
     }
 
     private var searchBar: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("Search files and folders", text: $model.query, prompt: Text("Search files and folders"))
-                .textFieldStyle(.plain)
-                .disableAutocorrection(true)
-                .focused($isSearchFocused)
-                .onSubmit {
-                    model.scheduleSearch(immediate: true)
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(.thinMaterial)
+                    .shadow(color: .black.opacity(0.04), radius: 4)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search files and folders", text: $model.query, prompt: Text("Search files and folders"))
+                        .textFieldStyle(.plain)
+                        .disableAutocorrection(true)
+                        .focused($isSearchFocused)
+                        .accessibilityIdentifier("SearchField")
+                        .onSubmit {
+                            model.scheduleSearch(immediate: true)
+                        }
+                    if model.isSearching {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    if !model.query.isEmpty {
+                        Button("Clear", systemImage: "xmark.circle.fill") {
+                            model.clearQuery()
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
+                    }
                 }
-            if model.isSearching {
-                ProgressView()
-                    .controlSize(.small)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
             }
-            if !model.query.isEmpty {
-                Button("Clear", systemImage: "xmark.circle.fill") {
-                    model.clearQuery()
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+            .frame(height: 44)
+
+            Button("Search") {
+                model.scheduleSearch(immediate: true)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(model.query.isEmpty)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.thinMaterial)
-                .shadow(color: .black.opacity(0.04), radius: 4)
-        }
-        .clipShape(.rect(cornerRadius: 10))
     }
 
     private var filterRow: some View {
@@ -74,6 +77,7 @@ struct SearchView: View {
                 }
             }
             .pickerStyle(.menu)
+            .accessibilityIdentifier("TypeFilter")
 
             Picker("Size", selection: $model.sizePreset) {
                 ForEach(SearchViewModel.SizePreset.allCases) { preset in
@@ -81,6 +85,7 @@ struct SearchView: View {
                 }
             }
             .pickerStyle(.menu)
+            .accessibilityIdentifier("SizeFilter")
 
             Picker("Modified", selection: $model.datePreset) {
                 ForEach(SearchViewModel.DatePreset.allCases) { preset in
@@ -88,6 +93,7 @@ struct SearchView: View {
                 }
             }
             .pickerStyle(.menu)
+            .accessibilityIdentifier("DateFilter")
 
             Spacer()
         }

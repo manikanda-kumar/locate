@@ -4,16 +4,16 @@ import Observation
 
 @MainActor
 @Observable
-final class SearchViewModel {
-    enum FileTypeFilter: String, CaseIterable, Identifiable, Sendable {
+public final class SearchViewModel {
+    public enum FileTypeFilter: String, CaseIterable, Identifiable, Sendable {
         case all
         case documents
         case images
         case code
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
 
-        var title: String {
+        public var title: String {
             switch self {
             case .all: return "All"
             case .documents: return "Documents"
@@ -22,7 +22,7 @@ final class SearchViewModel {
             }
         }
 
-        var extensions: [String]? {
+        public var extensions: [String]? {
             switch self {
             case .all:
                 return nil
@@ -36,15 +36,15 @@ final class SearchViewModel {
         }
     }
 
-    enum SizePreset: String, CaseIterable, Identifiable, Sendable {
+    public enum SizePreset: String, CaseIterable, Identifiable, Sendable {
         case any
         case over1MB
         case over10MB
         case over100MB
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
 
-        var title: String {
+        public var title: String {
             switch self {
             case .any: return "Any Size"
             case .over1MB: return "> 1 MB"
@@ -53,7 +53,7 @@ final class SearchViewModel {
             }
         }
 
-        var minimumBytes: Int64? {
+        public var minimumBytes: Int64? {
             switch self {
             case .any: return nil
             case .over1MB: return 1_000_000
@@ -63,15 +63,15 @@ final class SearchViewModel {
         }
     }
 
-    enum DatePreset: String, CaseIterable, Identifiable, Sendable {
+    public enum DatePreset: String, CaseIterable, Identifiable, Sendable {
         case any
         case last24Hours
         case last7Days
         case last30Days
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
 
-        var title: String {
+        public var title: String {
             switch self {
             case .any: return "Any Date"
             case .last24Hours: return "Last 24h"
@@ -80,7 +80,7 @@ final class SearchViewModel {
             }
         }
 
-        var modifiedAfter: Int64? {
+        public var modifiedAfter: Int64? {
             let now = Date()
             switch self {
             case .any:
@@ -95,57 +95,57 @@ final class SearchViewModel {
         }
     }
 
-    enum IndexStatus: Equatable {
+    public enum IndexStatus: Equatable {
         case unknown
         case notIndexed
         case indexed(lastIndexed: Date?, fileCount: Int64, dirCount: Int64)
     }
 
-    struct SearchResult: Identifiable, Hashable {
+    public struct SearchResult: Identifiable, Hashable {
         let record: FileRecord
 
-        var id: Int64 { record.id }
-        var url: URL { URL(filePath: record.path) }
-        var isDirectory: Bool { record.isDirectory }
-        var name: String { record.name }
-        var size: Int64? { record.size }
+        public var id: Int64 { record.id }
+        public var url: URL { URL(filePath: record.path) }
+        public var isDirectory: Bool { record.isDirectory }
+        public var name: String { record.name }
+        public var size: Int64? { record.size }
 
-        var modifiedDate: Date? {
+        public var modifiedDate: Date? {
             guard let modifiedAt = record.modifiedAt else { return nil }
             return Date(timeIntervalSince1970: TimeInterval(modifiedAt))
         }
 
-        var parentPath: String {
+        public var parentPath: String {
             url.deletingLastPathComponent().path(percentEncoded: false)
         }
     }
 
-    var query: String = ""
-    var fileType: FileTypeFilter = .all
-    var sizePreset: SizePreset = .any
-    var datePreset: DatePreset = .any
-    var results: [SearchResult] = []
-    var selection: Set<SearchResult.ID> = []
-    var isSearching = false
-    var lastError: String?
-    private(set) var indexStatus: IndexStatus = .unknown
+    public var query: String = ""
+    public var fileType: FileTypeFilter = .all
+    public var sizePreset: SizePreset = .any
+    public var datePreset: DatePreset = .any
+    public var results: [SearchResult] = []
+    public var selection: Set<SearchResult.ID> = []
+    public var isSearching = false
+    public var lastError: String?
+    public private(set) var indexStatus: IndexStatus = .unknown
 
     private let databaseURL: URL
     private var databaseManager: DatabaseManager?
     private var hasLoaded = false
     private var searchTask: Task<Void, Never>?
 
-    init(databaseURL: URL = AppPaths.defaultDatabaseURL()) {
+    public init(databaseURL: URL = AppPaths.defaultDatabaseURL()) {
         self.databaseURL = databaseURL
     }
 
-    func load() async {
+    public func load() async {
         guard !hasLoaded else { return }
         hasLoaded = true
         await refreshIndexStatus()
     }
 
-    func refreshIndexStatus() async {
+    public func refreshIndexStatus() async {
         do {
             let manager = try ensureManager()
             let roots = try await manager.fetchRoots()
@@ -163,14 +163,14 @@ final class SearchViewModel {
         }
     }
 
-    func clearQuery() {
+    public func clearQuery() {
         query = ""
         results = []
         lastError = nil
         selection.removeAll()
     }
 
-    func scheduleSearch(immediate: Bool = false) {
+    public func scheduleSearch(immediate: Bool = false) {
         searchTask?.cancel()
         let nextQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task { [weak self] in
@@ -183,7 +183,7 @@ final class SearchViewModel {
         }
     }
 
-    var statusDescription: String {
+    public var statusDescription: String {
         switch indexStatus {
         case .unknown:
             return "Loading index status…"
@@ -201,7 +201,7 @@ final class SearchViewModel {
         }
     }
 
-    var hasIndex: Bool {
+    public var hasIndex: Bool {
         if case .indexed = indexStatus {
             return true
         }

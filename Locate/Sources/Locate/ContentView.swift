@@ -1,4 +1,5 @@
 import SwiftUI
+import LocateViewModel
 
 struct ContentView: View {
     @State private var viewModel = SearchViewModel()

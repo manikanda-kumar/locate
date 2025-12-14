@@ -1,0 +1,35 @@
+{
+  "configurations" : [
+    {
+      "id" : "46E7D7E9-8D43-4B18-98E0-48E26F2E3F5C",
+      "name" : "Default",
+      "options" : {
+        "codeCoverage" : true,
+        "targetForVariableExpansion" : {
+          "containerPath" : "container:Package.swift",
+          "identifier" : "Locate",
+          "name" : "Locate"
+        }
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Package.swift",
+      "identifier" : "Locate",
+      "name" : "Locate"
+    }
+  },
+  "testPlanName" : "LocateTests",
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Package.swift",
+        "identifier" : "LocateCoreTests",
+        "name" : "LocateCoreTests"
+      }
+    }
+  ],
+  "version" : 1
+}

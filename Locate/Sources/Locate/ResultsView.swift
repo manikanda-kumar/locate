@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import LocateViewModel
 
 struct ResultsView: View {
     let results: [SearchViewModel.SearchResult]
