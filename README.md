@@ -52,7 +52,7 @@ cd locate
 
 # Set up app icon (choose one)
 brew install librsvg && ./scripts/generate-icon.sh
-# OR: See ICON_SETUP.md for other methods
+# OR: See docs/icon-setup.md for other methods
 
 # Build and run
 cd Locate
@@ -68,13 +68,22 @@ swift build
 
 ## 📚 Documentation
 
-- **[ICON_SETUP.md](ICON_SETUP.md)** - Set up the app icon
-- **[PHASE4_COMPLETE.md](PHASE4_COMPLETE.md)** - Implementation details
-- **[docs/](docs/)** - Complete documentation
-  - [Release Guide](docs/release.md) - Build, sign, and distribute
-  - [QA Checklist](docs/qa-checklist.md) - Comprehensive testing
-  - [Power Features Tests](docs/power-features-tests.md) - Regression testing
-  - [Performance Tests](docs/performance-tests.md) - Performance benchmarks
+All documentation is in **[docs/](docs/)**:
+
+- **[tasks.md](tasks.md)** - Development task tracking
+- **[AGENTS.md](AGENTS.md)** - Swift/SwiftUI coding guidelines
+
+**Release & Distribution:**
+- [Release Guide](docs/release.md) - Build, sign, and distribute
+- [Icon Setup](docs/icon-setup.md) - Generate app icon from SVG
+
+**Testing & QA:**
+- [QA Checklist](docs/qa-checklist.md) - Comprehensive testing (150+ items)
+- [Power Features Tests](docs/power-features-tests.md) - Regression testing
+- [Performance Tests](docs/performance-tests.md) - Performance benchmarks
+
+**Planning:**
+- [UX Improvements](docs/ux-improvements.md) - Phase 5 roadmap
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -162,7 +171,7 @@ brew install librsvg
 ./scripts/generate-icon.sh
 ```
 
-See [ICON_SETUP.md](ICON_SETUP.md) for other methods.
+See [docs/icon-setup.md](docs/icon-setup.md) for other methods.
 
 ## 📄 License
 
@@ -176,5 +185,3 @@ Icon: Custom blue glass design for macOS.
 ---
 
 **Status:** ✅ v1.0 feature-complete | Ready for testing and release
-
-See [PHASE4_COMPLETE.md](PHASE4_COMPLETE.md) for full details.

@@ -21,10 +21,18 @@ Welcome to the Locate documentation. This directory contains guides for developm
 
 ### Documentation Files
 
+**Release & Distribution:**
 - **[release.md](release.md)** - Complete guide for building, packaging, and distributing Locate
-- **[qa-checklist.md](qa-checklist.md)** - Comprehensive QA testing checklist for all features
-- **[power-features-tests.md](power-features-tests.md)** - Focused regression tests for advanced features
+- **[icon-setup.md](icon-setup.md)** - Icon generation from SVG (multiple methods)
+
+**Testing & QA:**
+- **[qa-checklist.md](qa-checklist.md)** - Comprehensive QA testing checklist (150+ items)
+- **[power-features-tests.md](power-features-tests.md)** - Regression tests for advanced features
 - **[performance-tests.md](performance-tests.md)** - Performance and memory testing guide
+
+**Planning & Development:**
+- **[ux-improvements.md](ux-improvements.md)** - Phase 5 UX improvements roadmap (filters, columns, hidden files)
+- **[swift6-migration-notes.md](swift6-migration-notes.md)** - Swift 6 concurrency fixes and gotchas
 
 ### Quick Start Development
 

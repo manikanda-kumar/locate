@@ -1,7 +1,13 @@
-# Build and Test Fixes Summary
+# Swift 6 Migration Notes
 
 ## Overview
-This document summarizes the fixes applied to resolve compilation errors and test failures
+This document summarizes the fixes applied during Swift 6 migration to resolve compilation errors and test failures. These notes are preserved to avoid repeating the same issues in future development.
+
+**Key topics:**
+- Sendable conformance for actor boundaries
+- Concurrency violations and fixes
+- FTS5 prefix search behavior
+- Test path resolution on macOS
 
 ## Issues Resolved
 
