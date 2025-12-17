@@ -2,6 +2,31 @@
 
 This document captures architecture-level improvement areas discovered during a repo review, plus recommended next steps.
 
+## Production Release Notes
+
+> **Important:** Document these points in release notes and on the project website before public release.
+
+### Security & Distribution Posture
+
+- **Unsandboxed App:** Locate runs without macOS App Sandbox (`com.apple.security.app-sandbox = false`). This is intentional for a `locate`-style tool but means:
+  - The app is **not Mac App Store eligible** in this form
+  - Direct download distribution only (DMG, notarized)
+  - Any local process running as the same user can read the index database
+
+- **Full Disk Access:** For complete filesystem indexing, users should grant Full Disk Access in System Settings → Privacy & Security. Without it, some protected directories will be skipped.
+
+- **Index Storage:** The search index is stored unencrypted at `~/.locate/locate.sqlite`. It contains file paths and names (not file contents). The directory is created with `0700` permissions (user-only access).
+
+### Applied Hardening (v1.0)
+
+The following security and reliability improvements were applied:
+
+1. **FileScanner resilience** — Skips unreadable files instead of aborting the entire index operation
+2. **SQL injection prevention** — All SQL queries use parameterized statements
+3. **Directory permissions** — `~/.locate` created with restrictive `0700` permissions
+4. **Concurrent indexing guard** — Auto-reindex skips if manual indexing is already in progress
+5. **API encapsulation** — Internal database handle no longer exposed publicly
+
 ## High-Impact Fixes (Correctness & Consistency)
 
 ### Align platform targets and documentation
