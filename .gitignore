@@ -41,3 +41,9 @@ Temporary Items
 
 # DMG files (keep in build/ but don't track)
 *.dmg
+
+# Locate database and cache
+.locate/
+
+# Swift build cache
+.home/
