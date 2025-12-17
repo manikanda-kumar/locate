@@ -421,116 +421,124 @@ Effort estimates:
 
 ## Phase 3: Power Features (Week 3–4)
 
-### P3-T01 — Extend search engine with regex mode
+### P3-T01 — Extend search engine with regex mode ✅
 
-- **Description:**  
+- **Description:**
   Extend `SearchRequest` with `useRegex` flag. Implement regex search by filtering candidates with `NSRegularExpression`. Handle invalid patterns gracefully.
 - **Acceptance criteria:**
-  - [ ] Search API accepts `useRegex`.
-  - [ ] Valid regex patterns filter results correctly.
-  - [ ] Invalid regex returns error, doesn't crash.
-- **Effort:** L  
+  - [x] Search API accepts `useRegex`.
+  - [x] Valid regex patterns filter results correctly.
+  - [x] Invalid regex returns error, doesn't crash.
+- **Effort:** L
 - **Dependencies:** P1-T09
+- **Status:** COMPLETE
 
 ---
 
-### P3-T02 — Add regex toggle and validation feedback in UI
+### P3-T02 — Add regex toggle and validation feedback in UI ✅
 
-- **Description:**  
+- **Description:**
   Add toggle to enable "Regex" mode. Display inline error for invalid regex.
 - **Acceptance criteria:**
-  - [ ] Regex toggle visible and changes `SearchViewModel` state.
-  - [ ] Invalid regex shows clear error text.
-  - [ ] Turning regex off returns to normal FTS search.
-- **Effort:** M  
+  - [x] Regex toggle visible and changes `SearchViewModel` state.
+  - [x] Invalid regex shows clear error text.
+  - [x] Turning regex off returns to normal FTS search.
+- **Effort:** M
 - **Dependencies:** P3-T01, P2-T02
+- **Status:** COMPLETE
 
 ---
 
-### P3-T03 — Implement optional case sensitivity toggle
+### P3-T03 — Implement optional case sensitivity toggle ✅
 
-- **Description:**  
+- **Description:**
   Add "Case sensitive" toggle affecting both normal and regex searches.
 - **Acceptance criteria:**
-  - [ ] Toggle present and persists for session.
-  - [ ] Different results when toggling case sensitivity (verified with mixed-case files).
-- **Effort:** M  
+  - [x] Toggle present and persists for session.
+  - [x] Different results when toggling case sensitivity (verified with mixed-case files).
+- **Effort:** M
 - **Dependencies:** P3-T01, P2-T07
+- **Status:** COMPLETE
 
 ---
 
-### P3-T04 — Implement menu bar extra with quick search popover
+### P3-T04 — Implement menu bar extra with quick search popover ✅
 
-- **Description:**  
+- **Description:**
   Add macOS `MenuBarExtra` with compact quick search view, reusing `SearchViewModel` logic.
 - **Acceptance criteria:**
-  - [ ] Menu bar icon appears when app is running.
-  - [ ] Clicking opens popover with search field and results list.
-  - [ ] Actions in popover open selected files.
-- **Effort:** L  
+  - [x] Menu bar icon appears when app is running.
+  - [x] Clicking opens popover with search field and results list.
+  - [x] Actions in popover open selected files.
+- **Effort:** L
 - **Dependencies:** P2-T02, P2-T04
+- **Status:** COMPLETE
 
 ---
 
-### P3-T05 — Connect menu bar quick search to shared search engine
+### P3-T05 — Connect menu bar quick search to shared search engine ✅
 
-- **Description:**  
+- **Description:**
   Ensure main window and menu bar share the same `DatabaseManager` actor without concurrency issues.
 - **Acceptance criteria:**
-  - [ ] Both UI surfaces use the same `DatabaseManager`.
-  - [ ] Simultaneous searches don't crash or misbehave.
-- **Effort:** M  
+  - [x] Both UI surfaces use the same `DatabaseManager`.
+  - [x] Simultaneous searches don't crash or misbehave.
+- **Effort:** M
 - **Dependencies:** P3-T04, P1-T03
+- **Status:** COMPLETE
 
 ---
 
-### P3-T06 — Implement global hotkey registration (⌥Space)
+### P3-T06 — Implement global hotkey registration (⌥Space) ✅
 
-- **Description:**  
+- **Description:**
   Implement global keyboard shortcut using AppKit/Carbon to show/focus main window.
 - **Acceptance criteria:**
-  - [ ] ⌥Space opens or focuses main window when app is running.
-  - [ ] Works even when app is in background.
-  - [ ] Registration failure handled gracefully.
-- **Effort:** L  
+  - [x] ⌥Space opens or focuses main window when app is running.
+  - [x] Works even when app is in background.
+  - [x] Registration failure handled gracefully.
+- **Effort:** L
 - **Dependencies:** P2-T01, GS-T03
+- **Status:** COMPLETE
 
 ---
 
-### P3-T07 — Ensure window focus/activation from hotkey and menu bar
+### P3-T07 — Ensure window focus/activation from hotkey and menu bar ✅
 
-- **Description:**  
+- **Description:**
   Bring app to front and focus search field when triggered from hotkey or menu bar "Open Locate…".
 - **Acceptance criteria:**
-  - [ ] Hotkey and menu bar action reliably focus main window and search field.
-- **Effort:** M  
+  - [x] Hotkey and menu bar action reliably focus main window and search field.
+- **Effort:** M
 - **Dependencies:** P3-T06, P3-T04
+- **Status:** COMPLETE
 
 ---
 
 ### P3-T08 — Power features regression tests
 
-- **Description:**  
+- **Description:**
   Manual tests for regex, case sensitivity, menu bar, global hotkey from various states.
 - **Acceptance criteria:**
   - [ ] Checklist document exists for these features.
   - [ ] All scenarios pass on at least one test machine.
-- **Effort:** M  
+- **Effort:** M
 - **Dependencies:** P3-T02, P3-T05, P3-T07
 
 ---
 
 ## Phase 4: Polish & Distribution (Week 4–5)
 
-### P4-T01 — Implement Settings window shell
+### P4-T01 — Implement Settings window shell ✅
 
-- **Description:**  
+- **Description:**
   Add Settings/Preferences window (⌘,) with tabs for: Indexed folders, Exclusion patterns, Indexing schedule.
 - **Acceptance criteria:**
-  - [ ] "Preferences…" menu item opens Settings window.
-  - [ ] Window shows at least three placeholder sections.
-- **Effort:** M  
+  - [x] "Preferences…" menu item opens Settings window.
+  - [x] Window shows at least three placeholder sections.
+- **Effort:** M
 - **Dependencies:** P2-T01
+- **Status:** COMPLETE
 
 ---
 
