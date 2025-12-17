@@ -125,12 +125,15 @@ public final class SearchViewModel {
     public var fileType: FileTypeFilter = .all
     public var sizePreset: SizePreset = .any
     public var datePreset: DatePreset = .any
+    public var useRegex = false
+    public var caseSensitive = false
     public var results: [SearchResult] = []
     public var selection: Set<SearchResult.ID> = []
     public var isSearching = false
     public var isIndexing = false
     public var indexingProgress: String?
     public var lastError: String?
+    public var regexValidationError: String?
     public private(set) var indexStatus: IndexStatus = .unknown
 
     private let databaseURL: URL
@@ -298,7 +301,22 @@ public final class SearchViewModel {
             minSize: sizePreset.minimumBytes,
             maxSize: nil,
             modifiedAfter: datePreset.modifiedAfter,
-            modifiedBefore: nil
+            modifiedBefore: nil,
+            useRegex: useRegex,
+            caseSensitive: caseSensitive
         )
+    }
+
+    public func validateRegex() {
+        guard useRegex, !query.isEmpty else {
+            regexValidationError = nil
+            return
+        }
+        do {
+            _ = try NSRegularExpression(pattern: query, options: [])
+            regexValidationError = nil
+        } catch {
+            regexValidationError = "Invalid regex: \(error.localizedDescription)"
+        }
     }
 }

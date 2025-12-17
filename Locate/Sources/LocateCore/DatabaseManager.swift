@@ -208,6 +208,14 @@ public actor DatabaseManager {
     }
 
     public func search(_ request: SearchRequest, limit: Int = 50) async throws -> [FileRecord] {
+        if request.useRegex {
+            return try await searchWithRegex(request, limit: limit)
+        } else {
+            return try await searchWithFTS(request, limit: limit)
+        }
+    }
+
+    private func searchWithFTS(_ request: SearchRequest, limit: Int) async throws -> [FileRecord] {
         let base = """
         SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
         FROM files f
@@ -268,6 +276,91 @@ public actor DatabaseManager {
                 results.append(record)
             }
         }
+
+        // Apply case sensitivity filter if needed (FTS is case-insensitive by default)
+        if request.caseSensitive {
+            results = results.filter { record in
+                record.name.contains(request.query)
+            }
+        }
+
+        return results
+    }
+
+    private func searchWithRegex(_ request: SearchRequest, limit: Int) async throws -> [FileRecord] {
+        // Validate regex pattern
+        let regexOptions: NSRegularExpression.Options = request.caseSensitive ? [] : [.caseInsensitive]
+        let regex: NSRegularExpression
+        do {
+            regex = try NSRegularExpression(pattern: request.query, options: regexOptions)
+        } catch {
+            throw SQLiteError(message: "Invalid regex pattern: \(error.localizedDescription)", code: SQLITE_ERROR)
+        }
+
+        // Build SQL query to fetch candidates with filters
+        let base = """
+        SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
+        FROM files f
+        """
+
+        var clauses: [String] = []
+        var params: [SQLParam] = []
+
+        if let exts = request.extensions?.map({ $0.lowercased() }), !exts.isEmpty {
+            let placeholders = Array(repeating: "?", count: exts.count).joined(separator: ",")
+            clauses.append("f.extension IN (\(placeholders))")
+            params.append(contentsOf: exts.map { .text($0) })
+        }
+        if let minSize = request.minSize {
+            clauses.append("f.size >= ?")
+            params.append(.int64(minSize))
+        }
+        if let maxSize = request.maxSize {
+            clauses.append("f.size <= ?")
+            params.append(.int64(maxSize))
+        }
+        if let modifiedAfter = request.modifiedAfter {
+            clauses.append("f.modified_at >= ?")
+            params.append(.int64(modifiedAfter))
+        }
+        if let modifiedBefore = request.modifiedBefore {
+            clauses.append("f.modified_at <= ?")
+            params.append(.int64(modifiedBefore))
+        }
+
+        var sql = base
+        if !clauses.isEmpty {
+            sql += " WHERE " + clauses.joined(separator: " AND ")
+        }
+        sql += " LIMIT ?"
+        let candidateLimit = min(limit * 10, 10000) // Fetch more candidates for regex filtering
+        params.append(.int64(Int64(candidateLimit)))
+
+        let stmt = try handle.prepare(sql)
+        for (idx, param) in params.enumerated() {
+            let position = Int32(idx + 1)
+            switch param {
+            case .text(let text):
+                try stmt.bindText(text, at: position)
+            case .int64(let value):
+                try stmt.bindInt64(value, at: position)
+            }
+        }
+
+        var results: [FileRecord] = []
+        while try stmt.step() {
+            if let record = FileRecord(from: stmt) {
+                // Apply regex filter
+                let range = NSRange(location: 0, length: record.name.utf16.count)
+                if regex.firstMatch(in: record.name, range: range) != nil {
+                    results.append(record)
+                    if results.count >= limit {
+                        break
+                    }
+                }
+            }
+        }
+
         return results
     }
 
@@ -301,14 +394,18 @@ public struct SearchRequest: Sendable {
     public var maxSize: Int64?
     public var modifiedAfter: Int64?
     public var modifiedBefore: Int64?
+    public var useRegex: Bool
+    public var caseSensitive: Bool
 
-    public init(query: String, extensions: [String]? = nil, minSize: Int64? = nil, maxSize: Int64? = nil, modifiedAfter: Int64? = nil, modifiedBefore: Int64? = nil) {
+    public init(query: String, extensions: [String]? = nil, minSize: Int64? = nil, maxSize: Int64? = nil, modifiedAfter: Int64? = nil, modifiedBefore: Int64? = nil, useRegex: Bool = false, caseSensitive: Bool = false) {
         self.query = query
         self.extensions = extensions
         self.minSize = minSize
         self.maxSize = maxSize
         self.modifiedAfter = modifiedAfter
         self.modifiedBefore = modifiedBefore
+        self.useRegex = useRegex
+        self.caseSensitive = caseSensitive
     }
 }
 

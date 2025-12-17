@@ -43,7 +43,7 @@ let package = Package(
         ),
         .testTarget(
             name: "LocateCoreTests",
-            dependencies: ["LocateCore"]
+            dependencies: ["LocateCore", "LocateViewModel"]
         ),
         // LocateUITests: Run only in Xcode 26, not from 'swift test'
         // To enable: Uncomment the target below and run tests in Xcode

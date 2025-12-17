@@ -2,10 +2,10 @@ import SwiftUI
 import LocateViewModel
 
 struct ContentView: View {
-    @State private var viewModel = SearchViewModel()
+    @Environment(SharedViewModel.self) private var sharedViewModel
 
     var body: some View {
-        SearchView(model: viewModel)
+        SearchView(model: sharedViewModel.searchModel)
             .frame(minWidth: 640, minHeight: 480)
     }
 }

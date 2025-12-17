@@ -92,32 +92,66 @@ struct SearchView: View {
     }
 
     private var filterRow: some View {
-        HStack(spacing: 12) {
-            Picker("Type", selection: $model.fileType) {
-                ForEach(SearchViewModel.FileTypeFilter.allCases) { filter in
-                    Text(filter.title).tag(filter)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Picker("Type", selection: $model.fileType) {
+                    ForEach(SearchViewModel.FileTypeFilter.allCases) { filter in
+                        Text(filter.title).tag(filter)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("TypeFilter")
+
+                Picker("Size", selection: $model.sizePreset) {
+                    ForEach(SearchViewModel.SizePreset.allCases) { preset in
+                        Text(preset.title).tag(preset)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("SizeFilter")
+
+                Picker("Modified", selection: $model.datePreset) {
+                    ForEach(SearchViewModel.DatePreset.allCases) { preset in
+                        Text(preset.title).tag(preset)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("DateFilter")
+
+                Divider()
+                    .frame(height: 16)
+
+                Toggle("Regex", isOn: $model.useRegex)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("RegexToggle")
+                    .onChange(of: model.useRegex) { _, _ in
+                        model.validateRegex()
+                    }
+                    .onChange(of: model.query) { _, _ in
+                        if model.useRegex {
+                            model.validateRegex()
+                        }
+                    }
+
+                Toggle("Match Case", isOn: $model.caseSensitive)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("CaseSensitiveToggle")
+
+                Spacer()
+            }
+
+            if let error = model.regexValidationError {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
                 }
             }
-            .pickerStyle(.menu)
-            .accessibilityIdentifier("TypeFilter")
-
-            Picker("Size", selection: $model.sizePreset) {
-                ForEach(SearchViewModel.SizePreset.allCases) { preset in
-                    Text(preset.title).tag(preset)
-                }
-            }
-            .pickerStyle(.menu)
-            .accessibilityIdentifier("SizeFilter")
-
-            Picker("Modified", selection: $model.datePreset) {
-                ForEach(SearchViewModel.DatePreset.allCases) { preset in
-                    Text(preset.title).tag(preset)
-                }
-            }
-            .pickerStyle(.menu)
-            .accessibilityIdentifier("DateFilter")
-
-            Spacer()
         }
         .padding(.vertical, 12)
     }
