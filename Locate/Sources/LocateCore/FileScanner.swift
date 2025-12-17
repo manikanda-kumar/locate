@@ -80,9 +80,8 @@ public struct FileScanner: @unchecked Sendable {
                     )
                     continuation.yield(entry)
                 } catch {
-                    Log.error("FileScanner failed for \(standardized.path): \(error.localizedDescription)")
-                    continuation.yield(with: .failure(error))
-                    break
+                    Log.error("FileScanner skipping unreadable file \(standardized.path): \(error.localizedDescription)")
+                    continue
                 }
             }
             continuation.finish()

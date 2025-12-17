@@ -151,7 +151,7 @@ private func parseSearchOptions(_ args: [String]) throws -> SearchOptions {
 private func ensureParentDirectory(for path: String) throws {
     let url = URL(fileURLWithPath: path)
     let dir = url.deletingLastPathComponent()
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
 }
 
 private func parseInt64(token: String, value: String?) throws -> Int64 {

@@ -322,7 +322,8 @@ public final class SearchViewModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(interval))
                 guard !Task.isCancelled else { break }
-                await self?.rebuildIndexForAllFolders()
+                guard let self, !self.isIndexing else { continue }
+                await self.rebuildIndexForAllFolders()
             }
         }
     }
@@ -339,7 +340,7 @@ public final class SearchViewModel {
         try FileManager.default.createDirectory(
             at: databaseURL.deletingLastPathComponent(),
             withIntermediateDirectories: true,
-            attributes: nil
+            attributes: [.posixPermissions: 0o700]
         )
         let manager = try DatabaseManager(path: databaseURL.path)
         databaseManager = manager

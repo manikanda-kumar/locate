@@ -133,7 +133,9 @@ public actor DatabaseManager {
     }
 
     public func deleteFiles(forRoot rootID: Int64) throws {
-        try handle.execute("DELETE FROM files WHERE root_id = \(rootID)")
+        let stmt = try handle.prepare("DELETE FROM files WHERE root_id = ?")
+        try stmt.bindInt64(rootID, at: 1)
+        try stmt.stepUntilDone()
     }
 
     public func insertFiles(_ entries: [IndexedEntry]) async throws {
@@ -364,7 +366,7 @@ public actor DatabaseManager {
         return results
     }
 
-    public func rawHandle() -> DatabaseHandle { handle }
+    internal func rawHandle() -> DatabaseHandle { handle }
 
     private func makeFTSQuery(_ text: String) -> String? {
         let tokens = text.split(whereSeparator: { $0.isWhitespace })
