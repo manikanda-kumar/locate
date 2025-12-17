@@ -140,6 +140,7 @@ public final class SearchViewModel {
     private var databaseManager: DatabaseManager?
     private var hasLoaded = false
     private var searchTask: Task<Void, Never>?
+    private var reindexTimer: Task<Void, Never>?
 
     public init(databaseURL: URL = AppPaths.defaultDatabaseURL()) {
         self.databaseURL = databaseURL
@@ -149,6 +150,7 @@ public final class SearchViewModel {
         guard !hasLoaded else { return }
         hasLoaded = true
         await refreshIndexStatus()
+        startAutoReindexIfNeeded()
     }
 
     public func refreshIndexStatus() async {
@@ -239,7 +241,8 @@ public final class SearchViewModel {
         lastError = nil
         do {
             let manager = try ensureManager()
-            try await manager.rebuildIndex(for: targetPath, batchSize: 500) { [weak self] progress in
+            let scanner = FileScanner(exclusions: AppSettings.shared.exclusionPatterns)
+            try await manager.rebuildIndex(for: targetPath, scanner: scanner, batchSize: 500) { [weak self] progress in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     switch progress {
@@ -257,6 +260,76 @@ public final class SearchViewModel {
             indexingProgress = nil
         }
         isIndexing = false
+    }
+
+    public func rebuildIndexForAllFolders() async {
+        let folders = AppSettings.shared.indexedFolders
+        guard !folders.isEmpty else {
+            lastError = "No folders configured. Add folders in Settings."
+            return
+        }
+
+        isIndexing = true
+        indexingProgress = "Starting indexing for \(folders.count) folder(s)…"
+        lastError = nil
+
+        var totalFiles: Int64 = 0
+        var totalDirs: Int64 = 0
+
+        do {
+            let manager = try ensureManager()
+            let scanner = FileScanner(exclusions: AppSettings.shared.exclusionPatterns)
+
+            for (index, folder) in folders.enumerated() {
+                indexingProgress = "Indexing folder \(index + 1)/\(folders.count): \(folder)"
+
+                try await manager.rebuildIndex(for: folder, scanner: scanner, batchSize: 500) { [weak self] progress in
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        switch progress {
+                        case .batchInserted(_, let files, let dirs):
+                            self.indexingProgress = "Folder \(index + 1)/\(folders.count): \(files) files, \(dirs) folders…"
+                        case .completed(let files, let dirs):
+                            totalFiles += files
+                            totalDirs += dirs
+                        }
+                    }
+                }
+            }
+
+            await refreshIndexStatus()
+            indexingProgress = "Completed: \(totalFiles) files, \(totalDirs) folders"
+
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(3))
+                self.indexingProgress = nil
+            }
+        } catch {
+            lastError = "Indexing failed: \(error.localizedDescription)"
+            indexingProgress = nil
+        }
+
+        isIndexing = false
+    }
+
+    public func startAutoReindexIfNeeded() {
+        reindexTimer?.cancel()
+
+        guard AppSettings.shared.autoReindex else { return }
+
+        let interval = AppSettings.shared.reindexIntervalHours * 3600
+        reindexTimer = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(interval))
+                guard !Task.isCancelled else { break }
+                await self?.rebuildIndexForAllFolders()
+            }
+        }
+    }
+
+    public func stopAutoReindex() {
+        reindexTimer?.cancel()
+        reindexTimer = nil
     }
 
     private func ensureManager() throws -> DatabaseManager {

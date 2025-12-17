@@ -8,9 +8,9 @@ public struct FileScanner: @unchecked Sendable {
     private let fileManager: FileManager
     private let exclusions: Set<String>
 
-    public init(fileManager: FileManager = .default, exclusions: Set<String> = ["Library", ".git", "node_modules"]) {
+    public init(fileManager: FileManager = .default, exclusions: [String] = ["Library", ".git", "node_modules"]) {
         self.fileManager = fileManager
-        self.exclusions = exclusions
+        self.exclusions = Set(exclusions)
     }
 
     public func scan(rootPath: String, rootID: Int64) async throws -> [DatabaseManager.IndexedEntry] {

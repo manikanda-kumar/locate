@@ -9,6 +9,7 @@ struct SettingsView: View {
         case indexedFolders = "Indexed Folders"
         case exclusions = "Exclusions"
         case indexing = "Indexing"
+        case permissions = "Privacy"
 
         var id: String { rawValue }
 
@@ -20,6 +21,8 @@ struct SettingsView: View {
                 return "eye.slash.fill"
             case .indexing:
                 return "arrow.triangle.2.circlepath"
+            case .permissions:
+                return "lock.shield.fill"
             }
         }
     }
@@ -43,6 +46,12 @@ struct SettingsView: View {
                     Label(SettingsTab.indexing.rawValue, systemImage: SettingsTab.indexing.icon)
                 }
                 .tag(SettingsTab.indexing)
+
+            FullDiskAccessGuideView()
+                .tabItem {
+                    Label(SettingsTab.permissions.rawValue, systemImage: SettingsTab.permissions.icon)
+                }
+                .tag(SettingsTab.permissions)
         }
         .frame(width: 600, height: 500)
         .padding()
@@ -51,6 +60,7 @@ struct SettingsView: View {
 
 struct IndexedFoldersView: View {
     @Bindable var model: SearchViewModel
+    @State private var settings = AppSettings.shared
     @State private var selectedPaths: Set<String> = []
 
     var body: some View {
@@ -63,14 +73,31 @@ struct IndexedFoldersView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            List(selection: $selectedPaths) {
-                Text("~/Documents")
-                    .tag("~/Documents")
-                Text("~/Downloads")
-                    .tag("~/Downloads")
+            if settings.indexedFolders.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("No folders indexed yet")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text("Click 'Add Folder' to get started")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                List(settings.indexedFolders, id: \.self, selection: $selectedPaths) { path in
+                    HStack {
+                        Image(systemName: "folder.fill")
+                            .foregroundStyle(.blue)
+                        Text(path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                        Spacer()
+                    }
+                    .tag(path)
+                }
+                .listStyle(.inset)
+                .frame(maxHeight: .infinity)
             }
-            .listStyle(.inset)
-            .frame(maxHeight: .infinity)
 
             HStack {
                 Button("Add Folder") {
@@ -79,7 +106,8 @@ struct IndexedFoldersView: View {
                 .buttonStyle(.bordered)
 
                 Button("Remove") {
-                    // Remove selected folders
+                    settings.removeIndexedFolders(selectedPaths)
+                    selectedPaths.removeAll()
                 }
                 .buttonStyle(.bordered)
                 .disabled(selectedPaths.isEmpty)
@@ -95,11 +123,11 @@ struct IndexedFoldersView: View {
                 } else {
                     Button("Rebuild Index Now") {
                         Task {
-                            await model.rebuildIndex()
+                            await model.rebuildIndexForAllFolders()
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(model.isIndexing)
+                    .disabled(model.isIndexing || settings.indexedFolders.isEmpty)
                 }
             }
         }
@@ -115,8 +143,7 @@ struct IndexedFoldersView: View {
 
         if panel.runModal() == .OK {
             if let url = panel.url {
-                // Add folder to index
-                print("Selected folder: \(url.path)")
+                settings.addIndexedFolder(url.path(percentEncoded: false))
             }
         }
     }
@@ -124,13 +151,8 @@ struct IndexedFoldersView: View {
 
 struct ExclusionsView: View {
     @Bindable var model: SearchViewModel
+    @State private var settings = AppSettings.shared
     @State private var newPattern = ""
-    @State private var exclusionPatterns: [String] = [
-        "Library",
-        ".git",
-        "node_modules",
-        ".Trash"
-    ]
     @State private var selectedPatterns: Set<String> = []
 
     var body: some View {
@@ -143,9 +165,15 @@ struct ExclusionsView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            List(exclusionPatterns, id: \.self, selection: $selectedPatterns) { pattern in
-                Text(pattern)
-                    .tag(pattern)
+            List(settings.exclusionPatterns, id: \.self, selection: $selectedPatterns) { pattern in
+                HStack {
+                    Image(systemName: "eye.slash.fill")
+                        .foregroundStyle(.orange)
+                        .font(.caption)
+                    Text(pattern)
+                    Spacer()
+                }
+                .tag(pattern)
             }
             .listStyle(.inset)
             .frame(maxHeight: .infinity)
@@ -164,7 +192,7 @@ struct ExclusionsView: View {
                 .disabled(newPattern.isEmpty)
 
                 Button("Remove") {
-                    exclusionPatterns.removeAll { selectedPatterns.contains($0) }
+                    settings.removeExclusionPatterns(selectedPatterns)
                     selectedPatterns.removeAll()
                 }
                 .buttonStyle(.bordered)
@@ -182,15 +210,14 @@ struct ExclusionsView: View {
 
     private func addPattern() {
         guard !newPattern.isEmpty else { return }
-        exclusionPatterns.append(newPattern)
+        settings.addExclusionPattern(newPattern)
         newPattern = ""
     }
 }
 
 struct IndexingScheduleView: View {
     @Bindable var model: SearchViewModel
-    @State private var autoReindex = false
-    @State private var reindexInterval: Double = 6.0 // hours
+    @State private var settings = AppSettings.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -199,19 +226,25 @@ struct IndexingScheduleView: View {
                 .fontWeight(.semibold)
 
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("Automatically reindex while app is running", isOn: $autoReindex)
+                Toggle("Automatically reindex while app is running", isOn: $settings.autoReindex)
+                    .onChange(of: settings.autoReindex) { _, _ in
+                        model.startAutoReindexIfNeeded()
+                    }
 
-                if autoReindex {
+                if settings.autoReindex {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Reindex every:")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
                         HStack {
-                            Slider(value: $reindexInterval, in: 1...24, step: 1)
+                            Slider(value: $settings.reindexIntervalHours, in: 1...24, step: 1)
                                 .frame(maxWidth: 300)
+                                .onChange(of: settings.reindexIntervalHours) { _, _ in
+                                    model.startAutoReindexIfNeeded()
+                                }
 
-                            Text("\(Int(reindexInterval)) hours")
+                            Text("\(Int(settings.reindexIntervalHours)) hours")
                                 .font(.body)
                                 .frame(width: 80, alignment: .leading)
                         }
