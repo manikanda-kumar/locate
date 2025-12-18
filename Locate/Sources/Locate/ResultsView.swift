@@ -12,54 +12,69 @@ struct ResultsView: View {
             if results.isEmpty {
                 emptyState
             } else {
-                Table(results, selection: $selection) {
-                    TableColumn("Name") { result in
-                        HStack(spacing: 8) {
-                            FileIconView(url: result.url, isDirectory: result.isDirectory)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(result.name)
-                                    .lineLimit(1)
-                                Text(result.parentPath)
-                                    .lineLimit(1)
-                                    .font(.caption)
+                VStack(spacing: 0) {
+                    Table(results, selection: $selection) {
+                        TableColumn("Name") { result in
+                            HStack(spacing: 8) {
+                                FileIconView(url: result.url, isDirectory: result.isDirectory)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(result.name)
+                                        .lineLimit(1)
+                                    Text(result.parentPath)
+                                        .lineLimit(1)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        TableColumn("Size") { result in
+                            Text(sizeDescription(for: result))
+                                .foregroundStyle(.secondary)
+                        }
+                        TableColumn("Modified") { result in
+                            if let date = result.modifiedDate {
+                                Text(date, format: .dateTime.year().month().day().hour().minute())
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("—")
                                     .foregroundStyle(.secondary)
                             }
                         }
+                    }
+                    .tableStyle(.inset(alternatesRowBackgrounds: true))
+                    .onTapGesture(count: 2) {
+                        handleOpenFile()
+                    }
+                    .contextMenu {
+                        if !selection.isEmpty {
+                            Button("Open") {
+                                handleOpenFile()
+                            }
+                            .keyboardShortcut(.return)
+
+                            Button("Reveal in Finder") {
+                                handleRevealInFinder()
+                            }
+                            .keyboardShortcut("r", modifiers: [.command, .shift])
+
+                            Button("Copy Path") {
+                                handleCopyPath()
+                            }
+                            .keyboardShortcut("c", modifiers: [.command, .shift])
+                        }
+                    }
+
+                    if selection.count > 1 {
+                        HStack {
+                            Text("\(selection.count) items selected")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                    }
-                    TableColumn("Size") { result in
-                        Text(sizeDescription(for: result))
-                            .foregroundStyle(.secondary)
-                    }
-                    TableColumn("Modified") { result in
-                        if let date = result.modifiedDate {
-                            Text(date, format: .dateTime.year().month().day().hour().minute())
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("—")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .tableStyle(.inset(alternatesRowBackgrounds: true))
-                .onTapGesture(count: 2) {
-                    handleOpenFile()
-                }
-                .contextMenu {
-                    if !selection.isEmpty {
-                        Button("Open") {
-                            handleOpenFile()
-                        }
-                        .keyboardShortcut(.return)
-
-                        Button("Reveal in Finder") {
-                            handleRevealInFinder()
-                        }
-
-                        Button("Copy Path") {
-                            handleCopyPath()
-                        }
-                        .keyboardShortcut("c", modifiers: [.command, .shift])
+                        .background(.bar)
                     }
                 }
             }
@@ -95,12 +110,28 @@ struct ResultsView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             Image(systemName: "text.magnifyingglass")
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
-            Text("Start typing to search your index.")
+            Text("Start typing to search your index")
+                .font(.headline)
                 .foregroundStyle(.secondary)
+            VStack(spacing: 4) {
+                Text("Tips:")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.tertiary)
+                Text("• Use filters to narrow results")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Text("• Press ⌘R to rebuild the index")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Text("• Toggle Regex for pattern matching")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

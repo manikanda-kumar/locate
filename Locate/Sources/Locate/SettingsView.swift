@@ -62,6 +62,7 @@ struct IndexedFoldersView: View {
     @Bindable var model: SearchViewModel
     @State private var settings = AppSettings.shared
     @State private var selectedPaths: Set<String> = []
+    @State private var showRemoveConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -106,8 +107,7 @@ struct IndexedFoldersView: View {
                 .buttonStyle(.bordered)
 
                 Button("Remove") {
-                    settings.removeIndexedFolders(selectedPaths)
-                    selectedPaths.removeAll()
+                    showRemoveConfirmation = true
                 }
                 .buttonStyle(.bordered)
                 .disabled(selectedPaths.isEmpty)
@@ -132,6 +132,19 @@ struct IndexedFoldersView: View {
             }
         }
         .padding()
+        .confirmationDialog(
+            "Remove \(selectedPaths.count) folder\(selectedPaths.count == 1 ? "" : "s")?",
+            isPresented: $showRemoveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                settings.removeIndexedFolders(selectedPaths)
+                selectedPaths.removeAll()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The folder\(selectedPaths.count == 1 ? "" : "s") will be removed from the index. Files will not be deleted.")
+        }
     }
 
     private func addFolder() {
@@ -219,11 +232,26 @@ struct IndexingScheduleView: View {
     @Bindable var model: SearchViewModel
     @State private var settings = AppSettings.shared
 
+    private let intervalMarks: [Double] = [1, 6, 12, 18, 24]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Indexing Schedule")
                 .font(.title2)
                 .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Hidden Files")
+                    .font(.headline)
+
+                Toggle("Include hidden files and folders in index", isOn: $settings.indexHiddenFiles)
+
+                Text("Files and folders starting with '.' will be indexed. Requires rebuild to take effect.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
 
             VStack(alignment: .leading, spacing: 12) {
                 Toggle("Automatically reindex while app is running", isOn: $settings.autoReindex)
@@ -237,17 +265,29 @@ struct IndexingScheduleView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
-                        HStack {
+                        VStack(spacing: 4) {
                             Slider(value: $settings.reindexIntervalHours, in: 1...24, step: 1)
                                 .frame(maxWidth: 300)
                                 .onChange(of: settings.reindexIntervalHours) { _, _ in
                                     model.startAutoReindexIfNeeded()
                                 }
 
-                            Text("\(Int(settings.reindexIntervalHours)) hours")
-                                .font(.body)
-                                .frame(width: 80, alignment: .leading)
+                            HStack {
+                                ForEach(intervalMarks, id: \.self) { mark in
+                                    Text("\(Int(mark))h")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                    if mark != intervalMarks.last {
+                                        Spacer()
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: 300)
                         }
+
+                        Text("\(Int(settings.reindexIntervalHours)) hour\(settings.reindexIntervalHours == 1 ? "" : "s")")
+                            .font(.body)
+                            .fontWeight(.medium)
                     }
                     .padding(.leading, 20)
                 }
@@ -271,19 +311,6 @@ struct IndexingScheduleView: View {
                             .font(.body)
                     }
                 }
-            }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Hidden Files")
-                    .font(.headline)
-
-                Toggle("Include hidden files and folders in index", isOn: $settings.indexHiddenFiles)
-
-                Text("Files and folders starting with '.' will be indexed. Requires rebuild to take effect.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Spacer()

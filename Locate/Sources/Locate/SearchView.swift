@@ -5,6 +5,7 @@ import LocateViewModel
 struct SearchView: View {
     @Bindable var model: SearchViewModel
     @FocusState private var isSearchFocused: Bool
+    @State private var showAdvancedFilters = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -73,13 +74,6 @@ struct SearchView: View {
             }
             .frame(height: 44)
 
-            Button("Search") {
-                model.scheduleSearch(immediate: true)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(model.query.isEmpty)
-
             Button(model.isIndexing ? "Indexing…" : "Update Index") {
                 Task {
                     await model.rebuildIndex()
@@ -140,60 +134,82 @@ struct SearchView: View {
                     .controlSize(.small)
                     .accessibilityIdentifier("CaseSensitiveToggle")
 
-                Divider()
-                    .frame(height: 16)
-
-                HStack(spacing: 4) {
-                    Text("Ext:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField(".swift,.md", text: $model.customExtensions)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
-                        .font(.caption)
-                        .accessibilityIdentifier("ExtensionFilter")
-                        .onSubmit {
-                            model.scheduleSearch(immediate: true)
-                        }
-                }
-
                 Spacer()
-            }
 
-            HStack(spacing: 8) {
-                Text("Scope:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if model.folderScope.isEmpty {
-                    Text("All indexed folders")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                } else {
-                    Text(model.folderScopeDisplayName)
-                        .font(.caption)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: 200)
-
-                    Button {
-                        model.clearFolderScope()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showAdvancedFilters.toggle()
                     }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                }
-
-                Button("Browse...") {
-                    selectFolderScope()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Advanced")
+                            .font(.caption)
+                        Image(systemName: showAdvancedFilters ? "chevron.up" : "chevron.down")
+                            .font(.caption2)
+                    }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .accessibilityIdentifier("FolderScopeBrowse")
+            }
 
-                Spacer()
+            if showAdvancedFilters {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Extensions:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 70, alignment: .leading)
+                        TextField(".swift,.md,.txt", text: $model.customExtensions)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(minWidth: 150, maxWidth: 300)
+                            .font(.caption)
+                            .accessibilityIdentifier("ExtensionFilter")
+                            .onSubmit {
+                                model.scheduleSearch(immediate: true)
+                            }
+                            .help(model.customExtensions.isEmpty ? "Enter comma-separated extensions" : model.customExtensions)
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("Scope:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 70, alignment: .leading)
+
+                        if model.folderScope.isEmpty {
+                            Text("All indexed folders")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            Text(model.folderScopeDisplayName)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .frame(maxWidth: 200)
+                                .help(model.folderScope)
+
+                            Button {
+                                model.clearFolderScope()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .controlSize(.small)
+                        }
+
+                        Button("Browse...") {
+                            selectFolderScope()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("FolderScopeBrowse")
+
+                        Spacer()
+                    }
+                }
+                .padding(.top, 4)
+                .padding(.leading, 4)
             }
 
             if let error = model.regexValidationError {
