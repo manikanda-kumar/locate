@@ -1,6 +1,22 @@
-# Locate for Mac
+<p align="center">
+  <img src="icon.svg" width="128" height="128" alt="Locate Icon">
+</p>
 
-Lightning-fast file search for macOS. Find any file instantly with full-text search, advanced filters, and global hotkey access.
+<h1 align="center">Locate for Mac</h1>
+
+<p align="center">
+  <strong>Lightning-fast file search for macOS</strong><br>
+  Find any file instantly with full-text search, advanced filters, and global hotkey access.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-15.0+-blue?logo=apple" alt="macOS 15.0+">
+  <img src="https://img.shields.io/badge/Swift-6-orange?logo=swift" alt="Swift 6">
+  <img src="https://img.shields.io/badge/Status-Production%20Ready-brightgreen" alt="Status">
+  <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-lightgrey" alt="License">
+</p>
+
+---
 
 ## ✨ Features
 
@@ -26,12 +42,20 @@ Lightning-fast file search for macOS. Find any file instantly with full-text sea
 - Configurable exclusion patterns
 - Automatic reindexing (1-24 hour intervals)
 - Progress tracking
+- Graceful handling of unreadable files
 
 **Beautiful UI**
 - Native SwiftUI interface
 - First-launch onboarding wizard
 - Full Disk Access guidance
 - Comprehensive settings
+
+**Secure by Design**
+- SQL injection protection via parameterized queries
+- Protected database directory (700 permissions)
+- Concurrent operation guards
+
+---
 
 ## 🚀 Quick Start
 
@@ -100,7 +124,8 @@ The included `LocateCLI` provides command-line access:
 
 ### Build Index
 ```bash
-swift run LocateCLI build-index /path/to/folder [--db ~/.locate/db.sqlite] [--batch 500]
+swift run LocateCLI build-index /path/to/folder [--batch 500]
+# Database defaults to ~/Library/Application Support/Locate/locate.db
 ```
 
 ### Search
@@ -124,8 +149,10 @@ swift run LocateCLI search data --min-size 10485760
 
 **LocateCore** - Search & indexing engine
 - SQLite database with FTS5 full-text search
+- Database stored in `~/Library/Application Support/Locate/` (macOS convention)
 - Async file scanning with exclusions
 - Batched inserts for performance
+- Hardened against unreadable files and SQL injection
 
 **LocateViewModel** - Application state
 - Observable search state with @Observable
@@ -184,4 +211,4 @@ Icon: Custom blue glass design for macOS.
 
 ---
 
-**Status:** ✅ v1.0 feature-complete | Ready for testing and release
+**Status:** ✅ v1.0 production-ready | Hardened & tested
