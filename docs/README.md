@@ -114,7 +114,7 @@ swift build
 ### Test Environments
 
 Test on:
-- macOS 12.0+ (minimum supported)
+- macOS 15.0+ (minimum supported)
 - Both Intel and Apple Silicon Macs
 - Clean installations (no previous data)
 - With Full Disk Access granted and denied

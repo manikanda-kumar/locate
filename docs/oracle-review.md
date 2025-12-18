@@ -15,7 +15,7 @@ This document captures architecture-level improvement areas discovered during a 
 
 - **Full Disk Access:** For complete filesystem indexing, users should grant Full Disk Access in System Settings → Privacy & Security. Without it, some protected directories will be skipped.
 
-- **Index Storage:** The search index is stored unencrypted at `~/.locate/locate.sqlite`. It contains file paths and names (not file contents). The directory is created with `0700` permissions (user-only access).
+- **Index Storage:** The search index is stored unencrypted at `~/Library/Application Support/Locate/locate.db`. It contains file paths and names (not file contents). The directory is created with `0700` permissions (user-only access).
 
 ### Applied Hardening (v1.0)
 
@@ -29,19 +29,22 @@ The following security and reliability improvements were applied:
 
 ## High-Impact Fixes (Correctness & Consistency)
 
-### Align platform targets and documentation
+### ✅ Align platform targets and documentation — FIXED
 - `Locate/Package.swift` targets macOS 15 (`.macOS(.v15)`), while docs and `Locate/Info.plist` state macOS 12.
 - Pick a single minimum target and align: `Locate/Package.swift`, `Locate/Info.plist`, `README.md`, and `docs/README.md`.
+- **Resolution:** Updated `Info.plist` (`LSMinimumSystemVersion`), `README.md`, and `docs/README.md` to macOS 15.0.
 
-### Fix database location mismatch
+### ✅ Fix database location mismatch — FIXED
 - Docs claim: `~/Library/Application Support/Locate/locate.db` (`docs/README.md`).
 - Code uses: `~/.locate/locate.sqlite` (`Locate/Sources/LocateViewModel/AppPaths.swift`, `Locate/Sources/LocateCLI/main.swift`).
 - Recommendation: default the app to Application Support (and keep CLI configurable via `--db`), then update docs accordingly.
+- **Resolution:** Updated `AppPaths.swift` and `LocateCLI/main.swift` to use `~/Library/Application Support/Locate/locate.db`.
 
-### Fix NULL-vs-0 decoding for SQLite columns
+### ✅ Fix NULL-vs-0 decoding for SQLite columns — FIXED
 - `FileRecord` decoding treats integer `0` as `nil` for size and timestamps (`Locate/Sources/LocateCore/Models.swift`).
-- This breaks real cases (e.g., empty files have size `0`, not “unknown”).
-- Recommendation: use `sqlite3_column_type(... ) == SQLITE_NULL` checks (or add `Statement.columnOptionalInt64(_:)`) and decode based on NULL, not “== 0”.
+- This breaks real cases (e.g., empty files have size `0`, not "unknown").
+- Recommendation: use `sqlite3_column_type(... ) == SQLITE_NULL` checks (or add `Statement.columnOptionalInt64(_:)`) and decode based on NULL, not "== 0".
+- **Resolution:** Added `columnIsNull()` and `columnOptionalInt64()` to `SQLite.swift`; updated `Models.swift` to use proper NULL detection.
 
 ## Indexing & Data Lifecycle
 

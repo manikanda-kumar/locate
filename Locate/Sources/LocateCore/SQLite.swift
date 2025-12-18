@@ -136,6 +136,17 @@ public final class Statement {
         return String(cString: cString)
     }
 
+    public func columnIsNull(_ index: Int32) -> Bool {
+        sqlite3_column_type(stmt, index) == SQLITE_NULL
+    }
+
+    public func columnOptionalInt64(_ index: Int32) -> Int64? {
+        if columnIsNull(index) {
+            return nil
+        }
+        return sqlite3_column_int64(stmt, index)
+    }
+
     private func bindText(_ value: String, at index: Int32, transient: Bool) throws {
         let destructor: sqlite3_destructor_type? = transient ? unsafeBitCast(-1, to: sqlite3_destructor_type.self) : nil
         if sqlite3_bind_text(stmt, index, value, -1, destructor) != SQLITE_OK {

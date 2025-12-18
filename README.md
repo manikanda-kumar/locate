@@ -62,7 +62,7 @@ swift build
 
 ## 📋 Requirements
 
-- macOS 12.0 or later
+- macOS 15.0 or later
 - Swift 6 toolchain (for building from source)
 - Full Disk Access (optional, for indexing protected folders)
 

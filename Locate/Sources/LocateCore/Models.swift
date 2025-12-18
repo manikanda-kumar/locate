@@ -34,7 +34,7 @@ public extension Root {
             volumeName: statement.columnText(2),
             fileCount: statement.columnInt64(3),
             dirCount: statement.columnInt64(4),
-            lastIndexed: statement.columnInt64(5) == 0 ? nil : statement.columnInt64(5)
+            lastIndexed: statement.columnOptionalInt64(5)
         )
     }
 }
@@ -51,16 +51,16 @@ public extension FileRecord {
         self.init(
             id: statement.columnInt64(0),
             rootID: statement.columnInt64(1),
-            parentID: statement.columnInt64(2) == 0 ? nil : statement.columnInt64(2),
+            parentID: statement.columnOptionalInt64(2),
             name: name,
             nameLower: nameLower,
             path: path,
             isDirectory: statement.columnBool(6),
-            size: statement.columnInt64(7) == 0 ? nil : statement.columnInt64(7),
+            size: statement.columnOptionalInt64(7),
             fileExtension: statement.columnText(8),
-            modifiedAt: statement.columnInt64(9) == 0 ? nil : statement.columnInt64(9),
-            createdAt: statement.columnInt64(10) == 0 ? nil : statement.columnInt64(10),
-            accessedAt: statement.columnInt64(11) == 0 ? nil : statement.columnInt64(11),
+            modifiedAt: statement.columnOptionalInt64(9),
+            createdAt: statement.columnOptionalInt64(10),
+            accessedAt: statement.columnOptionalInt64(11),
             attributes: statement.columnInt64(12)
         )
     }

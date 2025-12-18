@@ -166,8 +166,8 @@ private func expandPath(_ path: String) -> String {
 }
 
 private func defaultDatabasePath() -> String {
-    let home = FileManager.default.homeDirectoryForCurrentUser
-    return home.appendingPathComponent(".locate").appendingPathComponent("locate.sqlite").path
+    let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+    return appSupport.appendingPathComponent("Locate").appendingPathComponent("locate.db").path
 }
 
 private func printUsage() {
