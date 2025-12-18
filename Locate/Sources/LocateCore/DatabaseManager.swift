@@ -253,6 +253,13 @@ public actor DatabaseManager {
             clauses.append("f.modified_at <= ?")
             params.append(.int64(modifiedBefore))
         }
+        if let folderScope = request.folderScope {
+            let escapedPath = folderScope
+                .replacingOccurrences(of: "%", with: "\\%")
+                .replacingOccurrences(of: "_", with: "\\_")
+            clauses.append("f.path LIKE ? ESCAPE '\\'")
+            params.append(.text(escapedPath + "%"))
+        }
 
         var sql = base
         if !clauses.isEmpty {
@@ -329,6 +336,13 @@ public actor DatabaseManager {
             clauses.append("f.modified_at <= ?")
             params.append(.int64(modifiedBefore))
         }
+        if let folderScope = request.folderScope {
+            let escapedPath = folderScope
+                .replacingOccurrences(of: "%", with: "\\%")
+                .replacingOccurrences(of: "_", with: "\\_")
+            clauses.append("f.path LIKE ? ESCAPE '\\'")
+            params.append(.text(escapedPath + "%"))
+        }
 
         var sql = base
         if !clauses.isEmpty {
@@ -398,8 +412,19 @@ public struct SearchRequest: Sendable {
     public var modifiedBefore: Int64?
     public var useRegex: Bool
     public var caseSensitive: Bool
+    public var folderScope: String?
 
-    public init(query: String, extensions: [String]? = nil, minSize: Int64? = nil, maxSize: Int64? = nil, modifiedAfter: Int64? = nil, modifiedBefore: Int64? = nil, useRegex: Bool = false, caseSensitive: Bool = false) {
+    public init(
+        query: String,
+        extensions: [String]? = nil,
+        minSize: Int64? = nil,
+        maxSize: Int64? = nil,
+        modifiedAfter: Int64? = nil,
+        modifiedBefore: Int64? = nil,
+        useRegex: Bool = false,
+        caseSensitive: Bool = false,
+        folderScope: String? = nil
+    ) {
         self.query = query
         self.extensions = extensions
         self.minSize = minSize
@@ -408,6 +433,7 @@ public struct SearchRequest: Sendable {
         self.modifiedBefore = modifiedBefore
         self.useRegex = useRegex
         self.caseSensitive = caseSensitive
+        self.folderScope = folderScope
     }
 }
 

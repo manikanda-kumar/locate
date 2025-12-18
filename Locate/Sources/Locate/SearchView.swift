@@ -140,6 +140,59 @@ struct SearchView: View {
                     .controlSize(.small)
                     .accessibilityIdentifier("CaseSensitiveToggle")
 
+                Divider()
+                    .frame(height: 16)
+
+                HStack(spacing: 4) {
+                    Text("Ext:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField(".swift,.md", text: $model.customExtensions)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 120)
+                        .font(.caption)
+                        .accessibilityIdentifier("ExtensionFilter")
+                        .onSubmit {
+                            model.scheduleSearch(immediate: true)
+                        }
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                Text("Scope:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if model.folderScope.isEmpty {
+                    Text("All indexed folders")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text(model.folderScopeDisplayName)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: 200)
+
+                    Button {
+                        model.clearFolderScope()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                }
+
+                Button("Browse...") {
+                    selectFolderScope()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .accessibilityIdentifier("FolderScopeBrowse")
+
                 Spacer()
             }
 
@@ -184,5 +237,19 @@ struct SearchView: View {
             }
         }
         .padding(.top, 8)
+    }
+
+    private func selectFolderScope() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select Folder"
+        panel.message = "Choose a folder to limit search scope"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            model.folderScope = url.path(percentEncoded: false)
+            model.scheduleSearch(immediate: true)
+        }
     }
 }

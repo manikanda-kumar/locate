@@ -273,6 +273,19 @@ struct IndexingScheduleView: View {
                 }
             }
 
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Hidden Files")
+                    .font(.headline)
+
+                Toggle("Include hidden files and folders in index", isOn: $settings.indexHiddenFiles)
+
+                Text("Files and folders starting with '.' will be indexed. Requires rebuild to take effect.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Spacer()
         }
         .padding()

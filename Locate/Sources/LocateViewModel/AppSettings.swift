@@ -12,6 +12,7 @@ public final class AppSettings {
     private let autoReindexKey = "autoReindex"
     private let reindexIntervalKey = "reindexInterval"
     private let hasCompletedOnboardingKey = "hasCompletedOnboarding"
+    private let indexHiddenFilesKey = "indexHiddenFiles"
 
     public var indexedFolders: [String] {
         didSet {
@@ -43,6 +44,12 @@ public final class AppSettings {
         }
     }
 
+    public var indexHiddenFiles: Bool {
+        didSet {
+            defaults.set(indexHiddenFiles, forKey: indexHiddenFilesKey)
+        }
+    }
+
     private init() {
         // Load persisted values or use defaults
         self.indexedFolders = defaults.stringArray(forKey: indexedFoldersKey) ?? []
@@ -60,6 +67,7 @@ public final class AppSettings {
         self.autoReindex = defaults.bool(forKey: autoReindexKey)
         self.reindexIntervalHours = defaults.double(forKey: reindexIntervalKey).isZero ? 6.0 : defaults.double(forKey: reindexIntervalKey)
         self.hasCompletedOnboarding = defaults.bool(forKey: hasCompletedOnboardingKey)
+        self.indexHiddenFiles = defaults.bool(forKey: indexHiddenFilesKey)
     }
 
     public func addIndexedFolder(_ path: String) {

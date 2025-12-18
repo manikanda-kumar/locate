@@ -127,6 +127,8 @@ public final class SearchViewModel {
     public var datePreset: DatePreset = .any
     public var useRegex = false
     public var caseSensitive = false
+    public var customExtensions: String = ""
+    public var folderScope: String = ""
     public var results: [SearchResult] = []
     public var selection: Set<SearchResult.ID> = []
     public var isSearching = false
@@ -241,7 +243,10 @@ public final class SearchViewModel {
         lastError = nil
         do {
             let manager = try ensureManager()
-            let scanner = FileScanner(exclusions: AppSettings.shared.exclusionPatterns)
+            let scanner = FileScanner(
+                exclusions: AppSettings.shared.exclusionPatterns,
+                includeHiddenFiles: AppSettings.shared.indexHiddenFiles
+            )
             try await manager.rebuildIndex(for: targetPath, scanner: scanner, batchSize: 500) { [weak self] progress in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
@@ -278,7 +283,10 @@ public final class SearchViewModel {
 
         do {
             let manager = try ensureManager()
-            let scanner = FileScanner(exclusions: AppSettings.shared.exclusionPatterns)
+            let scanner = FileScanner(
+                exclusions: AppSettings.shared.exclusionPatterns,
+                includeHiddenFiles: AppSettings.shared.indexHiddenFiles
+            )
 
             for (index, folder) in folders.enumerated() {
                 indexingProgress = "Indexing folder \(index + 1)/\(folders.count): \(folder)"
@@ -371,14 +379,40 @@ public final class SearchViewModel {
     private func buildRequest(for text: String) -> SearchRequest {
         SearchRequest(
             query: text,
-            extensions: fileType.extensions,
+            extensions: parseExtensions(),
             minSize: sizePreset.minimumBytes,
             maxSize: nil,
             modifiedAfter: datePreset.modifiedAfter,
             modifiedBefore: nil,
             useRegex: useRegex,
-            caseSensitive: caseSensitive
+            caseSensitive: caseSensitive,
+            folderScope: folderScope.isEmpty ? nil : folderScope
         )
+    }
+
+    private func parseExtensions() -> [String]? {
+        var extensions = fileType.extensions ?? []
+
+        if !customExtensions.isEmpty {
+            let custom = customExtensions
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .map { $0.hasPrefix(".") ? String($0.dropFirst()) : $0 }
+                .filter { !$0.isEmpty }
+            extensions.append(contentsOf: custom)
+        }
+
+        return extensions.isEmpty ? nil : extensions
+    }
+
+    public var folderScopeDisplayName: String {
+        guard !folderScope.isEmpty else { return "" }
+        return folderScope.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+    }
+
+    public func clearFolderScope() {
+        folderScope = ""
+        scheduleSearch(immediate: true)
     }
 
     public func validateRegex() {

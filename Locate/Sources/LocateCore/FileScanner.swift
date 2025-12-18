@@ -7,10 +7,16 @@ public struct FileScanner: @unchecked Sendable {
 
     private let fileManager: FileManager
     private let exclusions: Set<String>
+    private let includeHiddenFiles: Bool
 
-    public init(fileManager: FileManager = .default, exclusions: [String] = ["Library", ".git", "node_modules"]) {
+    public init(
+        fileManager: FileManager = .default,
+        exclusions: [String] = ["Library", ".git", "node_modules"],
+        includeHiddenFiles: Bool = false
+    ) {
         self.fileManager = fileManager
         self.exclusions = Set(exclusions)
+        self.includeHiddenFiles = includeHiddenFiles
     }
 
     public func scan(rootPath: String, rootID: Int64) async throws -> [DatabaseManager.IndexedEntry] {
@@ -35,10 +41,15 @@ public struct FileScanner: @unchecked Sendable {
             .attributeModificationDateKey
         ]
 
+        var enumeratorOptions: FileManager.DirectoryEnumerationOptions = [.skipsPackageDescendants]
+        if !includeHiddenFiles {
+            enumeratorOptions.insert(.skipsHiddenFiles)
+        }
+
         guard let enumerator = fileManager.enumerator(
             at: rootURL,
             includingPropertiesForKeys: Array(resourceKeys),
-            options: [.skipsPackageDescendants, .skipsHiddenFiles]
+            options: enumeratorOptions
         ) else {
             throw ScanError.enumeratorUnavailable(rootPath)
         }
@@ -92,7 +103,8 @@ public struct FileScanner: @unchecked Sendable {
         let name = url.lastPathComponent
         let isTopLevel = url.standardizedFileURL.pathComponents.dropFirst(rootComponents.count).first == name
 
-        if name.hasPrefix(".") {
+        // Only skip hidden files if we're not including them
+        if !includeHiddenFiles && name.hasPrefix(".") {
             return true
         }
 
