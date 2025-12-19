@@ -218,25 +218,63 @@ public actor DatabaseManager {
     }
 
     private func searchWithFTS(_ request: SearchRequest, limit: Int) async throws -> [FileRecord] {
-        let base = """
-        SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
-        FROM files f
-        JOIN files_fts ON f.id = files_fts.rowid
-        """
+        // Check if we have any terms to search (either optional terms or required terms)
+        let hasSearchTerms = !request.optionalTerms.isEmpty || !request.requiredTerms.isEmpty
+        let hasBooleanFilters = !request.requiredTerms.isEmpty || !request.excludedTerms.isEmpty
 
-        guard let ftsQuery = makeFTSQuery(request.query) else {
+        // Build base query - use FTS if we have optional terms, otherwise scan with filters
+        let base: String
+        var clauses: [String] = []
+        var params: [SQLParam] = []
+
+        if !request.optionalTerms.isEmpty, let ftsQuery = makeFTSQuery(request.query) {
+            base = """
+            SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
+            FROM files f
+            JOIN files_fts ON f.id = files_fts.rowid
+            """
+            clauses.append("files_fts.name MATCH ?")
+            params.append(.text(ftsQuery))
+        } else if hasSearchTerms {
+            // Only required/excluded terms - scan all files with LIKE for required terms
+            base = """
+            SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
+            FROM files f
+            """
+            // Add LIKE clause for required terms to reduce scan
+            for term in request.requiredTerms {
+                let searchColumn = request.searchInPath ? "f.path" : "f.name_lower"
+                clauses.append("\(searchColumn) LIKE ?")
+                params.append(.text("%" + term.lowercased() + "%"))
+            }
+        } else {
             Log.error("Search query empty or invalid")
             return []
         }
 
-        var clauses: [String] = ["files_fts.name MATCH ?"]
-        var params: [SQLParam] = [.text(ftsQuery)]
+        // File/Directory filter
+        if request.searchFiles && !request.searchDirectories {
+            clauses.append("f.is_directory = 0")
+        } else if !request.searchFiles && request.searchDirectories {
+            clauses.append("f.is_directory = 1")
+        } else if !request.searchFiles && !request.searchDirectories {
+            return [] // Nothing to search
+        }
 
+        // Extension inclusion filter
         if let exts = request.extensions?.map({ $0.lowercased() }), !exts.isEmpty {
             let placeholders = Array(repeating: "?", count: exts.count).joined(separator: ",")
             clauses.append("f.extension IN (\(placeholders))")
             params.append(contentsOf: exts.map { .text($0) })
         }
+
+        // Extension exclusion filter
+        if let excludedExts = request.excludedExtensions?.map({ $0.lowercased() }), !excludedExts.isEmpty {
+            let placeholders = Array(repeating: "?", count: excludedExts.count).joined(separator: ",")
+            clauses.append("(f.extension IS NULL OR f.extension NOT IN (\(placeholders)))")
+            params.append(contentsOf: excludedExts.map { .text($0) })
+        }
+
         if let minSize = request.minSize {
             clauses.append("f.size >= ?")
             params.append(.int64(minSize))
@@ -265,8 +303,18 @@ public actor DatabaseManager {
         if !clauses.isEmpty {
             sql += " WHERE " + clauses.joined(separator: " AND ")
         }
-        sql += " ORDER BY bm25(files_fts) LIMIT ?"
-        params.append(.int64(Int64(limit)))
+
+        // Order by FTS rank if using FTS, otherwise by name
+        if !request.optionalTerms.isEmpty {
+            sql += " ORDER BY bm25(files_fts)"
+        } else {
+            sql += " ORDER BY f.name"
+        }
+
+        // Fetch more candidates when we need post-filtering
+        let candidateLimit = hasBooleanFilters ? min(limit * 10, 10000) : limit
+        sql += " LIMIT ?"
+        params.append(.int64(Int64(candidateLimit)))
 
         let stmt = try handle.prepare(sql)
         for (idx, param) in params.enumerated() {
@@ -282,14 +330,26 @@ public actor DatabaseManager {
         var results: [FileRecord] = []
         while try stmt.step() {
             if let record = FileRecord(from: stmt) {
-                results.append(record)
-            }
-        }
+                // Apply boolean term filtering
+                if hasBooleanFilters {
+                    let textToMatch = request.searchInPath ? record.path : record.name
+                    if !request.matchesBooleanTerms(textToMatch, caseSensitive: request.caseSensitive) {
+                        continue
+                    }
+                }
 
-        // Apply case sensitivity filter if needed (FTS is case-insensitive by default)
-        if request.caseSensitive {
-            results = results.filter { record in
-                record.name.contains(request.query)
+                // Apply case sensitivity filter if needed (FTS is case-insensitive by default)
+                if request.caseSensitive && !request.query.isEmpty {
+                    let textToMatch = request.searchInPath ? record.path : record.name
+                    if !textToMatch.contains(request.query) {
+                        continue
+                    }
+                }
+
+                results.append(record)
+                if results.count >= limit {
+                    break
+                }
             }
         }
 
@@ -297,13 +357,17 @@ public actor DatabaseManager {
     }
 
     private func searchWithRegex(_ request: SearchRequest, limit: Int) async throws -> [FileRecord] {
-        // Validate regex pattern
-        let regexOptions: NSRegularExpression.Options = request.caseSensitive ? [] : [.caseInsensitive]
-        let regex: NSRegularExpression
-        do {
-            regex = try NSRegularExpression(pattern: request.query, options: regexOptions)
-        } catch {
-            throw SQLiteError(message: "Invalid regex pattern: \(error.localizedDescription)", code: SQLITE_ERROR)
+        let hasBooleanFilters = !request.requiredTerms.isEmpty || !request.excludedTerms.isEmpty
+
+        // Validate regex pattern (only if we have a query)
+        var regex: NSRegularExpression? = nil
+        if !request.query.isEmpty {
+            let regexOptions: NSRegularExpression.Options = request.caseSensitive ? [] : [.caseInsensitive]
+            do {
+                regex = try NSRegularExpression(pattern: request.query, options: regexOptions)
+            } catch {
+                throw SQLiteError(message: "Invalid regex pattern: \(error.localizedDescription)", code: SQLITE_ERROR)
+            }
         }
 
         // Build SQL query to fetch candidates with filters
@@ -315,11 +379,36 @@ public actor DatabaseManager {
         var clauses: [String] = []
         var params: [SQLParam] = []
 
+        // File/Directory filter
+        if request.searchFiles && !request.searchDirectories {
+            clauses.append("f.is_directory = 0")
+        } else if !request.searchFiles && request.searchDirectories {
+            clauses.append("f.is_directory = 1")
+        } else if !request.searchFiles && !request.searchDirectories {
+            return [] // Nothing to search
+        }
+
+        // Extension inclusion filter
         if let exts = request.extensions?.map({ $0.lowercased() }), !exts.isEmpty {
             let placeholders = Array(repeating: "?", count: exts.count).joined(separator: ",")
             clauses.append("f.extension IN (\(placeholders))")
             params.append(contentsOf: exts.map { .text($0) })
         }
+
+        // Extension exclusion filter
+        if let excludedExts = request.excludedExtensions?.map({ $0.lowercased() }), !excludedExts.isEmpty {
+            let placeholders = Array(repeating: "?", count: excludedExts.count).joined(separator: ",")
+            clauses.append("(f.extension IS NULL OR f.extension NOT IN (\(placeholders)))")
+            params.append(contentsOf: excludedExts.map { .text($0) })
+        }
+
+        // Add LIKE clause for required terms to reduce scan
+        for term in request.requiredTerms {
+            let searchColumn = request.searchInPath ? "f.path" : "f.name_lower"
+            clauses.append("\(searchColumn) LIKE ?")
+            params.append(.text("%" + term.lowercased() + "%"))
+        }
+
         if let minSize = request.minSize {
             clauses.append("f.size >= ?")
             params.append(.int64(minSize))
@@ -366,13 +455,26 @@ public actor DatabaseManager {
         var results: [FileRecord] = []
         while try stmt.step() {
             if let record = FileRecord(from: stmt) {
-                // Apply regex filter
-                let range = NSRange(location: 0, length: record.name.utf16.count)
-                if regex.firstMatch(in: record.name, range: range) != nil {
-                    results.append(record)
-                    if results.count >= limit {
-                        break
+                let textToMatch = request.searchInPath ? record.path : record.name
+
+                // Apply regex filter (if we have a regex pattern)
+                if let regex = regex {
+                    let range = NSRange(location: 0, length: textToMatch.utf16.count)
+                    if regex.firstMatch(in: textToMatch, range: range) == nil {
+                        continue
                     }
+                }
+
+                // Apply boolean term filtering
+                if hasBooleanFilters {
+                    if !request.matchesBooleanTerms(textToMatch, caseSensitive: request.caseSensitive) {
+                        continue
+                    }
+                }
+
+                results.append(record)
+                if results.count >= limit {
+                    break
                 }
             }
         }
@@ -414,6 +516,17 @@ public struct SearchRequest: Sendable {
     public var caseSensitive: Bool
     public var folderScope: String?
 
+    // NEW: From Windows Locate review
+    public var searchInPath: Bool
+    public var searchFiles: Bool
+    public var searchDirectories: Bool
+    public var excludedExtensions: [String]?
+
+    // Boolean operators parsed from query
+    internal var requiredTerms: [String]
+    internal var excludedTerms: [String]
+    internal var optionalTerms: [String]
+
     public init(
         query: String,
         extensions: [String]? = nil,
@@ -423,9 +536,12 @@ public struct SearchRequest: Sendable {
         modifiedBefore: Int64? = nil,
         useRegex: Bool = false,
         caseSensitive: Bool = false,
-        folderScope: String? = nil
+        folderScope: String? = nil,
+        searchInPath: Bool = false,
+        searchFiles: Bool = true,
+        searchDirectories: Bool = true,
+        excludedExtensions: [String]? = nil
     ) {
-        self.query = query
         self.extensions = extensions
         self.minSize = minSize
         self.maxSize = maxSize
@@ -434,6 +550,73 @@ public struct SearchRequest: Sendable {
         self.useRegex = useRegex
         self.caseSensitive = caseSensitive
         self.folderScope = folderScope
+        self.searchInPath = searchInPath
+        self.searchFiles = searchFiles
+        self.searchDirectories = searchDirectories
+        self.excludedExtensions = excludedExtensions
+
+        // Parse boolean operators from query
+        let parsed = Self.parseQuery(query)
+        self.requiredTerms = parsed.required
+        self.excludedTerms = parsed.excluded
+        self.optionalTerms = parsed.optional
+
+        // Build clean query from optional terms (for FTS/regex matching)
+        self.query = parsed.optional.joined(separator: " ")
+    }
+
+    /// Parse query for boolean operators: +required -excluded optional
+    private static func parseQuery(_ query: String) -> (required: [String], excluded: [String], optional: [String]) {
+        var required: [String] = []
+        var excluded: [String] = []
+        var optional: [String] = []
+
+        let tokens = query.split(whereSeparator: { $0.isWhitespace })
+        for token in tokens {
+            let term = String(token)
+            if term.hasPrefix("+") && term.count > 1 {
+                required.append(String(term.dropFirst()))
+            } else if term.hasPrefix("-") && term.count > 1 {
+                excluded.append(String(term.dropFirst()))
+            } else {
+                optional.append(term)
+            }
+        }
+
+        return (required, excluded, optional)
+    }
+
+    /// Check if a filename/path matches the boolean operator requirements
+    internal func matchesBooleanTerms(_ text: String, caseSensitive: Bool) -> Bool {
+        let searchText = caseSensitive ? text : text.lowercased()
+
+        // All required terms must be present
+        for term in requiredTerms {
+            let searchTerm = caseSensitive ? term : term.lowercased()
+            if !searchText.contains(searchTerm) {
+                return false
+            }
+        }
+
+        // No excluded terms can be present
+        for term in excludedTerms {
+            let searchTerm = caseSensitive ? term : term.lowercased()
+            if searchText.contains(searchTerm) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    /// Check if a file extension should be excluded
+    internal func isExtensionExcluded(_ ext: String?) -> Bool {
+        guard let excludedExts = excludedExtensions, !excludedExts.isEmpty else {
+            return false
+        }
+        guard let ext = ext else { return false }
+        let lowerExt = ext.lowercased()
+        return excludedExts.contains { lowerExt == $0.lowercased() }
     }
 }
 

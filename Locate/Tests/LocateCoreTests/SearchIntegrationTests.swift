@@ -256,4 +256,208 @@ struct SearchIntegrationTests {
         #expect(results.count == 3)
         #expect(results.allSatisfy { $0.name.hasPrefix("img") })
     }
+
+    // MARK: - Boolean Search Operators Tests
+
+    @Test("Boolean operators: required term with +")
+    func booleanOperatorsRequiredTerm() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "invoice_2024_final.pdf", nameLower: "invoice_2024_final.pdf", path: "/tmp/invoice_2024_final.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "invoice_2024_draft.pdf", nameLower: "invoice_2024_draft.pdf", path: "/tmp/invoice_2024_draft.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "report_2024.pdf", nameLower: "report_2024.pdf", path: "/tmp/report_2024.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "invoice_2023.pdf", nameLower: "invoice_2023.pdf", path: "/tmp/invoice_2023.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search: must contain "invoice" AND "2024"
+        let request = SearchRequest(query: "+invoice +2024")
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 2)
+        #expect(results.allSatisfy { $0.name.contains("invoice") && $0.name.contains("2024") })
+    }
+
+    @Test("Boolean operators: excluded term with -")
+    func booleanOperatorsExcludedTerm() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "invoice_final.pdf", nameLower: "invoice_final.pdf", path: "/tmp/invoice_final.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "invoice_draft.pdf", nameLower: "invoice_draft.pdf", path: "/tmp/invoice_draft.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "invoice_backup.pdf", nameLower: "invoice_backup.pdf", path: "/tmp/invoice_backup.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search: contains "invoice" but NOT "draft"
+        let request = SearchRequest(query: "invoice -draft")
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 2)
+        #expect(results.allSatisfy { $0.name.contains("invoice") && !$0.name.contains("draft") })
+    }
+
+    @Test("Boolean operators: combined required and excluded")
+    func booleanOperatorsCombined() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "project_alpha_final.doc", nameLower: "project_alpha_final.doc", path: "/tmp/project_alpha_final.doc", isDirectory: false, size: 100_000, fileExtension: "doc", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "project_alpha_draft.doc", nameLower: "project_alpha_draft.doc", path: "/tmp/project_alpha_draft.doc", isDirectory: false, size: 100_000, fileExtension: "doc", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "project_beta_final.doc", nameLower: "project_beta_final.doc", path: "/tmp/project_beta_final.doc", isDirectory: false, size: 100_000, fileExtension: "doc", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "notes_alpha.txt", nameLower: "notes_alpha.txt", path: "/tmp/notes_alpha.txt", isDirectory: false, size: 100_000, fileExtension: "txt", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search: must have "project" AND "alpha", NOT "draft"
+        let request = SearchRequest(query: "+project +alpha -draft")
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 1)
+        #expect(results[0].name == "project_alpha_final.doc")
+    }
+
+    // MARK: - Extension Exclusion Tests
+
+    @Test("Extension exclusion: exclude specific extensions")
+    func extensionExclusion() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "document.pdf", nameLower: "document.pdf", path: "/tmp/document.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "document.doc", nameLower: "document.doc", path: "/tmp/document.doc", isDirectory: false, size: 100_000, fileExtension: "doc", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "document.txt", nameLower: "document.txt", path: "/tmp/document.txt", isDirectory: false, size: 100_000, fileExtension: "txt", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "document.bak", nameLower: "document.bak", path: "/tmp/document.bak", isDirectory: false, size: 100_000, fileExtension: "bak", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search: find documents but exclude .bak and .txt
+        let request = SearchRequest(
+            query: "document",
+            excludedExtensions: ["bak", "txt"]
+        )
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 2)
+        #expect(results.allSatisfy { $0.fileExtension != "bak" && $0.fileExtension != "txt" })
+    }
+
+    // MARK: - Path Search Mode Tests
+
+    @Test("Path search mode: search in full path")
+    func pathSearchMode() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "config.json", nameLower: "config.json", path: "/Users/john/projects/webapp/config.json", isDirectory: false, size: 100, fileExtension: "json", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "config.json", nameLower: "config.json", path: "/Users/john/projects/mobile/config.json", isDirectory: false, size: 100, fileExtension: "json", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "webapp.txt", nameLower: "webapp.txt", path: "/tmp/webapp.txt", isDirectory: false, size: 100, fileExtension: "txt", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search in path for "webapp" - should find config in webapp folder
+        let request = SearchRequest(
+            query: "+webapp",
+            searchInPath: true
+        )
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 2)
+        #expect(results.allSatisfy { $0.path.lowercased().contains("webapp") })
+    }
+
+    // MARK: - File/Directory Filter Tests
+
+    @Test("Filter: search only files")
+    func filterSearchOnlyFiles() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "Documents", nameLower: "documents", path: "/tmp/Documents", isDirectory: true, size: nil, fileExtension: nil, modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "documents.txt", nameLower: "documents.txt", path: "/tmp/documents.txt", isDirectory: false, size: 100, fileExtension: "txt", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "documents.pdf", nameLower: "documents.pdf", path: "/tmp/documents.pdf", isDirectory: false, size: 200, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search only files
+        let request = SearchRequest(
+            query: "documents",
+            searchFiles: true,
+            searchDirectories: false
+        )
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 2)
+        #expect(results.allSatisfy { !$0.isDirectory })
+    }
+
+    @Test("Filter: search only directories")
+    func filterSearchOnlyDirectories() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "Projects", nameLower: "projects", path: "/tmp/Projects", isDirectory: true, size: nil, fileExtension: nil, modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "projects.txt", nameLower: "projects.txt", path: "/tmp/projects.txt", isDirectory: false, size: 100, fileExtension: "txt", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "MyProjects", nameLower: "myprojects", path: "/tmp/MyProjects", isDirectory: true, size: nil, fileExtension: nil, modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Search only directories
+        let request = SearchRequest(
+            query: "projects",
+            searchFiles: false,
+            searchDirectories: true
+        )
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 2)
+        #expect(results.allSatisfy { $0.isDirectory })
+    }
+
+    @Test("Combined: Boolean operators with regex mode")
+    func booleanOperatorsWithRegex() async throws {
+        let temp = try TempDB()
+        defer { temp.cleanup() }
+
+        let manager = try DatabaseManager(path: temp.url.path)
+        let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+
+        try await manager.insertFiles([
+            .init(rootID: rootID, parentID: nil, name: "report_2024_q1.pdf", nameLower: "report_2024_q1.pdf", path: "/tmp/report_2024_q1.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "report_2024_q2_draft.pdf", nameLower: "report_2024_q2_draft.pdf", path: "/tmp/report_2024_q2_draft.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+            .init(rootID: rootID, parentID: nil, name: "summary_2024_q1.pdf", nameLower: "summary_2024_q1.pdf", path: "/tmp/summary_2024_q1.pdf", isDirectory: false, size: 100_000, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+        ])
+
+        // Regex search with boolean operators
+        let request = SearchRequest(
+            query: "+report -draft",
+            useRegex: true
+        )
+        let results = try await manager.search(request, limit: 10)
+
+        #expect(results.count == 1)
+        #expect(results[0].name == "report_2024_q1.pdf")
+    }
 }

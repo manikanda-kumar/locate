@@ -334,18 +334,20 @@ public struct SearchRequest: Sendable {
     public var caseSensitive: Bool
     public var folderScope: String?
 
-    // NEW: From Windows Locate
+    // ✅ IMPLEMENTED: From Windows Locate
     public var searchInPath: Bool = false           // LOCATE_CHECKWHOLEPATH
     public var searchFiles: Bool = true             // LOCATE_FILENAMES
     public var searchDirectories: Bool = true       // LOCATE_FOLDERNAMES
-    public var maxResults: Int? = nil               // m_dwMaxFoundFiles
     public var excludedExtensions: [String]? = nil  // Negative extension matching
-    public var contentPattern: String? = nil        // Content search regex
 
-    // Boolean operators parsed from query
+    // ✅ IMPLEMENTED: Boolean operators parsed from query
     internal var requiredTerms: [String] = []       // +term
     internal var excludedTerms: [String] = []       // -term
     internal var optionalTerms: [String] = []       // term
+
+    // PENDING: Future enhancements
+    // public var maxResults: Int? = nil            // m_dwMaxFoundFiles (P2)
+    // public var contentPattern: String? = nil    // Content search regex (P3)
 }
 ```
 
@@ -387,16 +389,16 @@ let request = SearchRequest(query: "+invoice -draft 2024")
 
 ## Implementation Priority Matrix
 
-| Feature | Impact | Effort | Priority |
-|---------|--------|--------|----------|
-| Boolean operators (+/-) | High | Medium | **P0** |
-| Extension exclusion | Medium | Low | **P0** |
-| Path search mode | High | Medium | **P1** |
-| File/Dir filters | Medium | Low | **P1** |
-| Early termination | Medium | Medium | **P2** |
-| Directory exclusion | Medium | High | **P2** |
-| Content search | Low | High | **P3** |
-| Memory-mapped I/O | Low | High | **P4** |
+| Feature | Impact | Effort | Priority | Status |
+|---------|--------|--------|----------|--------|
+| Boolean operators (+/-) | High | Medium | **P0** | ✅ Implemented |
+| Extension exclusion | Medium | Low | **P0** | ✅ Implemented |
+| Path search mode | High | Medium | **P1** | ✅ Implemented |
+| File/Dir filters | Medium | Low | **P1** | ✅ Implemented |
+| Early termination | Medium | Medium | **P2** | Pending |
+| Directory exclusion | Medium | High | **P2** | Pending |
+| Content search | Low | High | **P3** | Pending |
+| Memory-mapped I/O | Low | High | **P4** | Pending |
 
 ---
 
@@ -413,7 +415,9 @@ let request = SearchRequest(query: "+invoice -draft 2024")
 ## Next Steps
 
 1. ✅ Review completed
-2. Implement boolean operator parsing in `SearchRequest`
-3. Add path search toggle with FTS path indexing
-4. Benchmark current vs enhanced search performance
-5. User testing for operator syntax discoverability
+2. ✅ Implement boolean operator parsing in `SearchRequest`
+3. ✅ Add path search toggle (`searchInPath` parameter)
+4. ✅ Add extension exclusion (`excludedExtensions` parameter)
+5. ✅ Add file/directory filters (`searchFiles`, `searchDirectories`)
+6. Benchmark current vs enhanced search performance
+7. User testing for operator syntax discoverability
