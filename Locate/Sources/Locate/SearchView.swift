@@ -9,7 +9,6 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FullDiskAccessBanner()
             searchBar
             filterRow
             Divider()
@@ -40,50 +39,41 @@ struct SearchView: View {
     }
 
     private var searchBar: some View {
-        HStack(spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(.thinMaterial)
-                    .shadow(color: .black.opacity(0.04), radius: 4)
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.thinMaterial)
+                .shadow(color: .black.opacity(0.04), radius: 4)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("Search files and folders", text: $model.query, prompt: Text("Search files and folders"))
-                        .textFieldStyle(.plain)
-                        .disableAutocorrection(true)
-                        .focused($isSearchFocused)
-                        .accessibilityIdentifier("SearchField")
-                        .onSubmit {
-                            model.scheduleSearch(immediate: true)
-                        }
-                    if model.isSearching {
-                        ProgressView()
-                            .controlSize(.small)
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search files and folders", text: $model.query, prompt: Text("Search files and folders"))
+                    .textFieldStyle(.plain)
+                    .disableAutocorrection(true)
+                    .focused($isSearchFocused)
+                    .accessibilityIdentifier("SearchField")
+                    .onSubmit {
+                        model.scheduleSearch(immediate: true)
                     }
-                    if !model.query.isEmpty {
-                        Button("Clear", systemImage: "xmark.circle.fill") {
-                            model.clearQuery()
-                        }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(.secondary)
+                    .onChange(of: model.query) { _, _ in
+                        model.scheduleSearch(immediate: false)
                     }
+                if model.isSearching {
+                    ProgressView()
+                        .controlSize(.small)
                 }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
-            }
-            .frame(height: 44)
-
-            Button(model.isIndexing ? "Indexing…" : "Update Index") {
-                Task {
-                    await model.rebuildIndex()
+                if !model.query.isEmpty {
+                    Button("Clear", systemImage: "xmark.circle.fill") {
+                        model.clearQuery()
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
                 }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .disabled(model.isIndexing)
-            .keyboardShortcut("r", modifiers: .command)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
         }
+        .frame(height: 44)
     }
 
     private var filterRow: some View {
@@ -143,26 +133,21 @@ struct SearchView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text("Advanced")
-                            .font(.caption)
                         Image(systemName: showAdvancedFilters ? "chevron.up" : "chevron.down")
-                            .font(.caption2)
                     }
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
             }
 
             if showAdvancedFilters {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Text("Extensions:")
-                            .font(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 70, alignment: .leading)
                         TextField(".swift,.md,.txt", text: $model.customExtensions)
                             .textFieldStyle(.roundedBorder)
                             .frame(minWidth: 150, maxWidth: 300)
-                            .font(.caption)
                             .accessibilityIdentifier("ExtensionFilter")
                             .onSubmit {
                                 model.scheduleSearch(immediate: true)
@@ -172,17 +157,14 @@ struct SearchView: View {
 
                     HStack(spacing: 8) {
                         Text("Scope:")
-                            .font(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 70, alignment: .leading)
 
                         if model.folderScope.isEmpty {
                             Text("All indexed folders")
-                                .font(.caption)
                                 .foregroundStyle(.tertiary)
                         } else {
                             Text(model.folderScopeDisplayName)
-                                .font(.caption)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                                 .frame(maxWidth: 200)

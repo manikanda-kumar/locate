@@ -6,6 +6,11 @@ struct ResultsView: View {
     let results: [SearchViewModel.SearchResult]
     @Binding var selection: Set<SearchViewModel.SearchResult.ID>
     let model: SearchViewModel
+    @State private var sortOrder = [KeyPathComparator(\SearchViewModel.SearchResult.name)]
+
+    private var sortedResults: [SearchViewModel.SearchResult] {
+        results.sorted(using: sortOrder)
+    }
 
     var body: some View {
         Group {
@@ -13,8 +18,8 @@ struct ResultsView: View {
                 emptyState
             } else {
                 VStack(spacing: 0) {
-                    Table(results, selection: $selection) {
-                        TableColumn("Name") { result in
+                    Table(sortedResults, selection: $selection, sortOrder: $sortOrder) {
+                        TableColumn("Name", value: \.name) { result in
                             HStack(spacing: 8) {
                                 FileIconView(url: result.url, isDirectory: result.isDirectory)
                                 VStack(alignment: .leading, spacing: 2) {
@@ -28,10 +33,20 @@ struct ResultsView: View {
                             }
                             .padding(.vertical, 4)
                         }
+                        .width(min: 200, ideal: 350, max: 600)
+
+                        TableColumn("Kind", value: \.kind) { result in
+                            Text(result.kind)
+                                .foregroundStyle(.secondary)
+                        }
+                        .width(min: 80, ideal: 100, max: 150)
+
                         TableColumn("Size") { result in
                             Text(sizeDescription(for: result))
                                 .foregroundStyle(.secondary)
                         }
+                        .width(min: 60, ideal: 80, max: 120)
+
                         TableColumn("Modified") { result in
                             if let date = result.modifiedDate {
                                 Text(date, format: .dateTime.year().month().day().hour().minute())
@@ -41,6 +56,26 @@ struct ResultsView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .width(min: 120, ideal: 150, max: 200)
+
+                        TableColumn("Created") { result in
+                            if let date = result.createdDate {
+                                Text(date, format: .dateTime.year().month().day().hour().minute())
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("—")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .width(min: 120, ideal: 150, max: 200)
+
+                        TableColumn("Path", value: \.path) { result in
+                            Text(result.path)
+                                .lineLimit(1)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .width(min: 150, ideal: 250, max: 500)
                     }
                     .tableStyle(.inset(alternatesRowBackgrounds: true))
                     .onTapGesture(count: 2) {
@@ -87,7 +122,7 @@ struct ResultsView: View {
 
     private func handleOpenFile() {
         guard let firstID = selection.first,
-              let result = results.first(where: { $0.id == firstID }) else {
+              let result = sortedResults.first(where: { $0.id == firstID }) else {
             return
         }
         model.openFile(result)
@@ -95,7 +130,7 @@ struct ResultsView: View {
 
     private func handleRevealInFinder() {
         guard let firstID = selection.first,
-              let result = results.first(where: { $0.id == firstID }) else {
+              let result = sortedResults.first(where: { $0.id == firstID }) else {
             return
         }
         model.revealInFinder(result)
@@ -103,7 +138,7 @@ struct ResultsView: View {
 
     private func handleCopyPath() {
         guard let firstID = selection.first,
-              let result = results.first(where: { $0.id == firstID }) else {
+              let result = sortedResults.first(where: { $0.id == firstID }) else {
             return
         }
         model.copyPath(result)

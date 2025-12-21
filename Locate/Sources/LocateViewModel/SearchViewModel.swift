@@ -110,14 +110,31 @@ public final class SearchViewModel {
         public var isDirectory: Bool { record.isDirectory }
         public var name: String { record.name }
         public var size: Int64? { record.size }
+        public var fileExtension: String? { record.fileExtension }
+        public var path: String { record.path }
 
         public var modifiedDate: Date? {
             guard let modifiedAt = record.modifiedAt else { return nil }
             return Date(timeIntervalSince1970: TimeInterval(modifiedAt))
         }
 
+        public var createdDate: Date? {
+            guard let createdAt = record.createdAt else { return nil }
+            return Date(timeIntervalSince1970: TimeInterval(createdAt))
+        }
+
         public var parentPath: String {
             url.deletingLastPathComponent().path(percentEncoded: false)
+        }
+
+        public var kind: String {
+            if isDirectory {
+                return "Folder"
+            } else if let ext = fileExtension, !ext.isEmpty {
+                return ext.uppercased() + " File"
+            } else {
+                return "File"
+            }
         }
     }
 
@@ -377,8 +394,15 @@ public final class SearchViewModel {
     }
 
     private func buildRequest(for text: String) -> SearchRequest {
-        SearchRequest(
-            query: text,
+        var searchQuery = text
+
+        // If query is a wildcard pattern like "*.js", search for all files with that extension
+        if text.hasPrefix("*.") {
+            searchQuery = ""
+        }
+
+        return SearchRequest(
+            query: searchQuery,
             extensions: parseExtensions(),
             minSize: sizePreset.minimumBytes,
             maxSize: nil,
@@ -400,6 +424,27 @@ public final class SearchViewModel {
                 .map { $0.hasPrefix(".") ? String($0.dropFirst()) : $0 }
                 .filter { !$0.isEmpty }
             extensions.append(contentsOf: custom)
+        }
+
+        // Auto-detect extension from query (e.g., "go.mod", "*.js", "test.swift")
+        let trimmedQuery = query.trimmingCharacters(in: .whitespaces)
+        if !trimmedQuery.isEmpty {
+            // Handle wildcard patterns like "*.js"
+            if trimmedQuery.hasPrefix("*.") {
+                let ext = String(trimmedQuery.dropFirst(2))
+                if !ext.isEmpty && !ext.contains(" ") {
+                    extensions.append(ext)
+                }
+            }
+            // Handle filenames with extensions like "go.mod" or "test.swift"
+            else if let lastDotIndex = trimmedQuery.lastIndex(of: "."),
+                    lastDotIndex != trimmedQuery.startIndex {
+                let ext = String(trimmedQuery[trimmedQuery.index(after: lastDotIndex)...])
+                // Only treat as extension if it doesn't contain spaces or special chars
+                if !ext.isEmpty && !ext.contains(" ") && !ext.contains("/") {
+                    extensions.append(ext)
+                }
+            }
         }
 
         return extensions.isEmpty ? nil : extensions

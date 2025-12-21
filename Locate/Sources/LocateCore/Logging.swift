@@ -12,7 +12,7 @@ public enum Log {
         if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
             #if canImport(os)
             // Use string interpolation which works with os.Logger's OSLogMessage
-            modernLogger.log(level: .info, "\(message, privacy: .public)")
+            modernLogger.log(level: .info, "\(message, privacy: .private(mask: .hash))")
             #else
             NSLog("INFO: %@", message)
             #endif
@@ -22,10 +22,22 @@ public enum Log {
         }
     }
 
+    public static func publicInfo(_ message: String) {
+        if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
+            #if canImport(os)
+            modernLogger.log(level: .info, "\(message, privacy: .public)")
+            #else
+            NSLog("INFO: %@", message)
+            #endif
+        } else {
+            NSLog("INFO: %@", message)
+        }
+    }
+
     public static func error(_ message: String) {
         if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
             #if canImport(os)
-            modernLogger.log(level: .error, "\(message, privacy: .public)")
+            modernLogger.log(level: .error, "\(message, privacy: .private(mask: .hash))")
             #else
             NSLog("ERROR: %@", message)
             #endif
