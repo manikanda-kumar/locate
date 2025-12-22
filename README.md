@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/macOS-15.0+-blue?logo=apple" alt="macOS 15.0+">
   <img src="https://img.shields.io/badge/Swift-6-orange?logo=swift" alt="Swift 6">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-brightgreen" alt="Status">
-  <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-lightgrey" alt="License">
+  <img src="https://img.shields.io/badge/License-MIT-blue" alt="License">
 </p>
 
 ---
@@ -202,7 +202,7 @@ See [docs/icon-setup.md](docs/icon-setup.md) for other methods.
 
 ## 📄 License
 
-Copyright © 2025. All rights reserved.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Credits
 
@@ -211,4 +211,4 @@ Icon: Custom blue glass design for macOS.
 
 ---
 
-**Status:** ✅ v1.0 production-ready | Hardened & tested
+**Status:** ✅ v1.1.0 production-ready | Hardened & tested
