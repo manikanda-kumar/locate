@@ -105,6 +105,60 @@ struct TempDB {
     #expect(results[0].name == "beta.txt")
 }
 
+@Test func wildcardExtensionSearchReturnsMatches() async throws {
+    let temp = try TempDB()
+    defer { temp.cleanup() }
+
+    let manager = try DatabaseManager(path: temp.url.path)
+    let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+    try await manager.insertFiles([
+        .init(rootID: rootID, parentID: nil, name: "photo.jpg", nameLower: "photo.jpg", path: "/tmp/photo.jpg", isDirectory: false, size: 100, fileExtension: "jpg", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+        .init(rootID: rootID, parentID: nil, name: "photo.png", nameLower: "photo.png", path: "/tmp/photo.png", isDirectory: false, size: 100, fileExtension: "png", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+    ])
+
+    let request = SearchRequest(query: "*.jpg")
+    let results = try await manager.search(request, limit: 10)
+
+    #expect(results.count == 1)
+    #expect(results.first?.name == "photo.jpg")
+}
+
+@Test func filenameWithExtensionSplitsIntoQueryAndExtension() async throws {
+    let temp = try TempDB()
+    defer { temp.cleanup() }
+
+    let manager = try DatabaseManager(path: temp.url.path)
+    let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+    try await manager.insertFiles([
+        .init(rootID: rootID, parentID: nil, name: "go.mod", nameLower: "go.mod", path: "/tmp/go.mod", isDirectory: false, size: 10, fileExtension: "mod", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+        .init(rootID: rootID, parentID: nil, name: "go.sum", nameLower: "go.sum", path: "/tmp/go.sum", isDirectory: false, size: 10, fileExtension: "sum", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+    ])
+
+    let request = SearchRequest(query: "go.mod")
+    let results = try await manager.search(request, limit: 10)
+
+    #expect(results.count == 1)
+    #expect(results.first?.name == "go.mod")
+}
+
+@Test func emptyQueryWithExtensionFilterSearchesByExtension() async throws {
+    let temp = try TempDB()
+    defer { temp.cleanup() }
+
+    let manager = try DatabaseManager(path: temp.url.path)
+    let rootID = try await manager.addOrUpdateRoot(path: temp.url.deletingLastPathComponent().path)
+    try await manager.insertFiles([
+        .init(rootID: rootID, parentID: nil, name: "paper.pdf", nameLower: "paper.pdf", path: "/tmp/paper.pdf", isDirectory: false, size: 42, fileExtension: "pdf", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0),
+        .init(rootID: rootID, parentID: nil, name: "notes.txt", nameLower: "notes.txt", path: "/tmp/notes.txt", isDirectory: false, size: 42, fileExtension: "txt", modifiedAt: nil, createdAt: nil, accessedAt: nil, attributes: 0)
+    ])
+
+    let request = SearchRequest(query: "", extensions: ["pdf"])
+    let results = try await manager.search(request, limit: 10)
+
+    #expect(results.count == 1)
+    #expect(results.first?.name == "paper.pdf")
+}
+
 @Test func searchByNameReturnsEmptyForBlankQuery() async throws {
     let temp = try TempDB()
     defer { temp.cleanup() }

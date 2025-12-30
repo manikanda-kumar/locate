@@ -221,13 +221,25 @@ public actor DatabaseManager {
         // Check if we have any terms to search (either optional terms or required terms)
         let hasSearchTerms = !request.optionalTerms.isEmpty || !request.requiredTerms.isEmpty
         let hasBooleanFilters = !request.requiredTerms.isEmpty || !request.excludedTerms.isEmpty
+        let shouldUseFTS = !request.searchInPath && request.searchFiles && request.searchDirectories
+        let hasFilterOnlySearch = request.extensions != nil
+            || request.excludedExtensions != nil
+            || request.minSize != nil
+            || request.maxSize != nil
+            || request.modifiedAfter != nil
+            || request.modifiedBefore != nil
+            || request.folderScope != nil
+            || request.searchFiles != request.searchDirectories
 
         // Build base query - use FTS if we have optional terms, otherwise scan with filters
         let base: String
         var clauses: [String] = []
         var params: [SQLParam] = []
 
-        if !request.optionalTerms.isEmpty, let ftsQuery = makeFTSQuery(request.query) {
+        var usingFTS = false
+
+        if shouldUseFTS, !request.optionalTerms.isEmpty, let ftsQuery = makeFTSQuery(request.query) {
+            usingFTS = true
             base = """
             SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
             FROM files f
@@ -247,6 +259,20 @@ public actor DatabaseManager {
                 clauses.append("\(searchColumn) LIKE ?")
                 params.append(.text("%" + term.lowercased() + "%"))
             }
+            // Add LIKE clause for optional terms when not using FTS (substring match)
+            if !shouldUseFTS {
+                for term in request.optionalTerms {
+                    let searchColumn = request.searchInPath ? "f.path" : "f.name_lower"
+                    let value = request.caseSensitive ? term : term.lowercased()
+                    clauses.append("\(searchColumn) LIKE ?")
+                    params.append(.text("%" + value + "%"))
+                }
+            }
+        } else if hasFilterOnlySearch {
+            base = """
+            SELECT f.id, f.root_id, f.parent_id, f.name, f.name_lower, f.path, f.is_directory, f.size, f.extension, f.modified_at, f.created_at, f.accessed_at, f.attributes
+            FROM files f
+            """
         } else {
             Log.error("Search query empty or invalid")
             return []
@@ -305,7 +331,7 @@ public actor DatabaseManager {
         }
 
         // Order by FTS rank if using FTS, otherwise by name
-        if !request.optionalTerms.isEmpty {
+        if usingFTS {
             sql += " ORDER BY bm25(files_fts)"
         } else {
             sql += " ORDER BY f.name"
@@ -358,6 +384,10 @@ public actor DatabaseManager {
 
     private func searchWithRegex(_ request: SearchRequest, limit: Int) async throws -> [FileRecord] {
         let hasBooleanFilters = !request.requiredTerms.isEmpty || !request.excludedTerms.isEmpty
+
+        guard !request.query.isEmpty || hasBooleanFilters else {
+            throw SQLiteError(message: "Invalid regex pattern: pattern required", code: SQLITE_ERROR)
+        }
 
         // Validate regex pattern (only if we have a query)
         var regex: NSRegularExpression? = nil
@@ -542,7 +572,14 @@ public struct SearchRequest: Sendable {
         searchDirectories: Bool = true,
         excludedExtensions: [String]? = nil
     ) {
-        self.extensions = extensions
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if useRegex {
+            self.extensions = Self.mergeExtensions(provided: extensions, derived: [])
+        } else {
+            let normalized = Self.normalizeQuery(trimmedQuery)
+            self.extensions = Self.mergeExtensions(provided: extensions, derived: normalized.extensions)
+        }
         self.minSize = minSize
         self.maxSize = maxSize
         self.modifiedAfter = modifiedAfter
@@ -556,13 +593,66 @@ public struct SearchRequest: Sendable {
         self.excludedExtensions = excludedExtensions
 
         // Parse boolean operators from query
-        let parsed = Self.parseQuery(query)
+        let parsed = Self.parseQuery(useRegex ? trimmedQuery : Self.normalizeQuery(trimmedQuery).query)
         self.requiredTerms = parsed.required
         self.excludedTerms = parsed.excluded
         self.optionalTerms = parsed.optional
 
         // Build clean query from optional terms (for FTS/regex matching)
         self.query = parsed.optional.joined(separator: " ")
+    }
+
+    private static func mergeExtensions(provided: [String]?, derived: [String]) -> [String]? {
+        var merged: [String] = []
+        var seen: Set<String> = []
+
+        for ext in (provided ?? []) + derived {
+            guard let cleaned = cleanExtension(ext) else { continue }
+            if seen.insert(cleaned).inserted {
+                merged.append(cleaned)
+            }
+        }
+
+        return merged.isEmpty ? nil : merged
+    }
+
+    private static func normalizeQuery(_ query: String) -> (query: String, extensions: [String]) {
+        var derivedExtensions: [String] = []
+        var normalizedQuery = query
+
+        if query.hasPrefix("*.") {
+            let ext = String(query.dropFirst(2))
+            if let cleaned = cleanExtension(ext) {
+                derivedExtensions.append(cleaned)
+            }
+            normalizedQuery = ""
+        } else if let dotIndex = query.lastIndex(of: "."),
+                  dotIndex != query.startIndex,
+                  isSingleTokenFilename(query) {
+            let ext = String(query[query.index(after: dotIndex)...])
+            if let cleaned = cleanExtension(ext) {
+                derivedExtensions.append(cleaned)
+            }
+            normalizedQuery = String(query[..<dotIndex])
+        }
+
+        return (normalizedQuery, derivedExtensions)
+    }
+
+    private static func isSingleTokenFilename(_ query: String) -> Bool {
+        !query.isEmpty && !query.contains(" ") && !query.contains("/")
+    }
+
+    private static func cleanExtension(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let withoutDot = trimmed.hasPrefix(".") ? String(trimmed.dropFirst()) : trimmed
+        guard !withoutDot.isEmpty,
+              !withoutDot.contains(" "),
+              !withoutDot.contains("/") else { return nil }
+
+        return withoutDot.lowercased()
     }
 
     /// Parse query for boolean operators: +required -excluded optional

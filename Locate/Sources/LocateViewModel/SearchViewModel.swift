@@ -373,7 +373,15 @@ public final class SearchViewModel {
     }
 
     private func runSearch(with text: String) async {
-        guard !text.isEmpty else {
+        let trimmedQuery = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let extensions = parseExtensions()
+
+        let hasFilters = (extensions?.isEmpty == false)
+            || sizePreset.minimumBytes != nil
+            || datePreset.modifiedAfter != nil
+            || !folderScope.isEmpty
+
+        guard !trimmedQuery.isEmpty || hasFilters else {
             results = []
             lastError = nil
             selection.removeAll()
@@ -382,7 +390,7 @@ public final class SearchViewModel {
         isSearching = true
         do {
             let manager = try ensureManager()
-            let request = buildRequest(for: text)
+            let request = buildRequest(for: trimmedQuery, extensions: extensions)
             let records = try await manager.search(request, limit: 200)
             results = records.map(SearchResult.init)
             lastError = nil
@@ -393,17 +401,10 @@ public final class SearchViewModel {
         isSearching = false
     }
 
-    private func buildRequest(for text: String) -> SearchRequest {
-        var searchQuery = text
-
-        // If query is a wildcard pattern like "*.js", search for all files with that extension
-        if text.hasPrefix("*.") {
-            searchQuery = ""
-        }
-
+    private func buildRequest(for text: String, extensions: [String]? = nil) -> SearchRequest {
         return SearchRequest(
-            query: searchQuery,
-            extensions: parseExtensions(),
+            query: text,
+            extensions: extensions ?? parseExtensions(),
             minSize: sizePreset.minimumBytes,
             maxSize: nil,
             modifiedAfter: datePreset.modifiedAfter,
@@ -415,39 +416,34 @@ public final class SearchViewModel {
     }
 
     private func parseExtensions() -> [String]? {
-        var extensions = fileType.extensions ?? []
+        var extensions: [String] = []
+
+        if let presetExtensions = fileType.extensions {
+            extensions.append(contentsOf: presetExtensions)
+        }
 
         if !customExtensions.isEmpty {
             let custom = customExtensions
                 .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .map { $0.hasPrefix(".") ? String($0.dropFirst()) : $0 }
-                .filter { !$0.isEmpty }
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .compactMap { value -> String? in
+                    guard !value.isEmpty else { return nil }
+                    let normalized = value.hasPrefix(".") ? String(value.dropFirst()) : value
+                    let cleaned = normalized.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    return cleaned.isEmpty ? nil : cleaned
+                }
             extensions.append(contentsOf: custom)
         }
 
-        // Auto-detect extension from query (e.g., "go.mod", "*.js", "test.swift")
-        let trimmedQuery = query.trimmingCharacters(in: .whitespaces)
-        if !trimmedQuery.isEmpty {
-            // Handle wildcard patterns like "*.js"
-            if trimmedQuery.hasPrefix("*.") {
-                let ext = String(trimmedQuery.dropFirst(2))
-                if !ext.isEmpty && !ext.contains(" ") {
-                    extensions.append(ext)
-                }
-            }
-            // Handle filenames with extensions like "go.mod" or "test.swift"
-            else if let lastDotIndex = trimmedQuery.lastIndex(of: "."),
-                    lastDotIndex != trimmedQuery.startIndex {
-                let ext = String(trimmedQuery[trimmedQuery.index(after: lastDotIndex)...])
-                // Only treat as extension if it doesn't contain spaces or special chars
-                if !ext.isEmpty && !ext.contains(" ") && !ext.contains("/") {
-                    extensions.append(ext)
-                }
-            }
+        var seen: Set<String> = []
+        let deduped = extensions.compactMap { ext -> String? in
+            let lower = ext.lowercased()
+            guard !lower.isEmpty, !seen.contains(lower) else { return nil }
+            seen.insert(lower)
+            return lower
         }
 
-        return extensions.isEmpty ? nil : extensions
+        return deduped.isEmpty ? nil : deduped
     }
 
     public var folderScopeDisplayName: String {

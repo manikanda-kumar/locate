@@ -211,4 +211,4 @@ Icon: Custom blue glass design for macOS.
 
 ---
 
-**Status:** ✅ v1.1.0 production-ready | Hardened & tested
+**Status:** ✅ v1.2.0 production-ready | Hardened & tested

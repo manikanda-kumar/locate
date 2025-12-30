@@ -134,10 +134,14 @@ private func parseSearchOptions(_ args: [String]) throws -> SearchOptions {
         }
     }
 
-    guard let query else { throw CLIError.missingValue("query") }
+    let hasFilterOnlySearch = (extensions?.isEmpty == false) || minSize != nil || maxSize != nil || modifiedAfter != nil || modifiedBefore != nil
+    let finalQuery = query ?? ""
+    if finalQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !hasFilterOnlySearch {
+        throw CLIError.missingValue("query")
+    }
     try ensureParentDirectory(for: databasePath)
     return SearchOptions(
-        query: query,
+        query: finalQuery,
         extensions: extensions,
         limit: limit,
         minSize: minSize,
@@ -213,4 +217,3 @@ struct SearchOptions {
     let modifiedBefore: Int64?
     let databasePath: String
 }
-
